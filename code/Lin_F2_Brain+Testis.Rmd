@@ -1,0 +1,2034 @@
+---
+author: 
+ - Mauricio Roza
+date: "`r Sys.Date()`"
+title: "DNA Methylation Linuron Multigenerational Xenopus tropicalis"
+subtitle: "F2 Generation"
+
+knit: (function(inputFile, encoding) {
+      out_dir <- "../reports";
+      rmarkdown::render(inputFile,
+                        encoding=encoding,
+                        output_dir=file.path(dirname(inputFile), out_dir))})
+
+output:
+  rmdformats::readthedown:  # https://www.datadreaming.org/post/r-markdown-theme-gallery/
+    highlight: kate
+    df_print: paged         # tables are pagable over rows and columns
+    code_folding: hide      # hides code snippets by default
+    fig_width: 9            # default is 7
+---
+
+# Abstract
+
+The herbicide linuron can cause endocrine disrupting effects in Xenopus tropicalis frogs, including offspring that were never exposed to the contaminant. The mechanisms by which these effects are transmitted across generations need to be further investigated. Here, we examined transgenerational alterations of brain and testis DNA methylation profiles paternally inherited from grandfathers developmentally exposed to an environmentally relevant concentration of linuron. Reduced representation bisulfite sequencing (RRBS) revealed numerous differentially methylated regions (DMRs) in brain (3060 DMRs) and testis (2551 DMRs) of the adult male F2 generation. DMRs were identified in genes important for DNA methylation (brain: dnmt3a; testis: dnmt3a and mbd2) and histone acetylation (brain: hdac8; testis: ep300, elp3, kat5 and kat14). Brain DMRs were found in genes involved in somatotropic (gh1, irs2, igfbp4, igfbp5), thyrotropic (trhr3, trhde, dio1, tg) and GnRH signalling (kiss2, prkag2, prkar1b). Testis DMRs were found in genes essential for spermatogenesis, meiosis and germ cell development (piwil1, mael, spo11, ddx4). Gene enrichment analysis showed pathways related with synaptic plasticity in the brain and epigenetic regulation in the testis. These findings are in accordance with the observed phenotypical alterations and suggest that developmental exposure to linuron can cause transgenerational alterations in DNA methylation patterns that affect growth, metabolism, reproductive function and epigenetic regulation in amphibians. This study provides new insights about the potential mechanisms of transgenerational effects of pollution in amphibians.
+
+## Methods
+
+The experiments were conducted at the Evolutionary Biology Center, Uppsala University, with Xenopus tropicalis frogs originated from Xenopus One (Dexter, MI, USA). This study is a continuation of (Orton et al., 2018) and (Karlsson et al., 2021). Briefly, in the F0 generation, free-swimming tadpoles (NF stage 40, (Faber and Nieuwkoop, 1994)) were exposed to 45 μg/L of linuron (99.9% purity; CAS 330–55-2, Sigma-Aldrich, St. Louis, MO, USA) dissolved in 0.0008% acetone or to acetone only (Control group) until they reached metamorphosis (NF 66). The exposure was conducted with three tanks per treatment, using a semi-static system where half of the water was changed three times per week, photoperiod 12:12h and 26°C. Linuron concentrations were analysed using gas chromatography/mass spectroscopy (GCMS) throughout the experiment and water quality was verified every other week (Orton et al., 2018).
+After the exposure period, the animals were transferred to clean water and when they reached sexual maturity, exposed males were mated with naïve females to obtain the F1 generation and follow the male-transmitted effects of linuron. At 20 months of age, F1 males were mated with naïve females to obtain F2 generation, allowing the study of transgenerational effects (Karlsson et al., 2021). 
+The experiments were approved by the Uppsala Animal Ethical Committee and in accordance with the Swedish Legislation on Animal Experimentation (Animal Welfare Act SFS1998:56) and the European Union Directive on the Protection of Animals Used for Scientific Purposes (2010/63/EU).
+
+Dissection
+
+The frogs were anaesthetized in buffered tricaine (tricainemethane sulfonate 0.3%, pH 7; Sigma-Aldrich, St. Louis, MO, USA) and euthanised by decapitation. Brain and the right testis were collected and stored at -80 °C until analysis.
+
+DNA extraction, library preparation and sequencing
+
+Genomic DNA from brain and testis samples from 7 control and 9 treatment individuals in the F2 generation were extracted using a Qiagen Allprep DNA/RNA mini kit (Qiagen, Germany) according to the manufacturer’s protocol with an additional wash with AW2 buffer. DNA quality was evaluated using NanoDrop ND-1000 spectrometer (Thermo Fisher Scientific, United States) and agarose gel electrophoresis (Bio-Rad Laboratories, US). DNA concentration was measured using Qubit 4 fluorometer with double-stranded DNA (dsDNA) Broad Range (BR) Assay (Thermo Fisher Scientific, United States). One testis control sample with low concentration and low 230/260nm absorbance ratio value was excluded from sequencing.
+ Library preparation and RRBS was performed by the Bioinformatics and Expression Analysis core facility (BEA, Karolinska Institute, Sweden) using Diagenode Premium RRBS kit (Diagenode, Belgium) and sequenced on the Illumina Nextseq 2000 platform (Illumina, United States). Average sequencing read size was 44.18 ± 16.10 (mean ± s.d.) millions of single-end reads. The data for this study have been deposited in the European Nucleotide Archive (ENA) at EMBL-EBI under accession number PRJEB59360 (https://www.ebi.ac.uk/ena/browser/view/PRJEB59360).
+
+Bioinformatics analysis
+
+Sequencing data were processed using the Nextflow nf-core methylseq pipeline version 1.6.1 (Ewels et al., 2021, 2020). The reads were aligned to the X. tropicalis reference genome (UCB v. 10.0) using Bismark v. 0.23.0, with an average of 41.7% ± 4.5% reads uniquely aligned. Sequencing quality was verified by visualizing FastQC v0.11.9 reports. 
+
+## Hypothesis
+
+Increased methylation levels on CpG islands on promoter regions are generally associated with repression of RNA expression. We hypothesise that differential methylatation will be found on regions related to genes associated with metabolic pathways and gonadal germ cell development.
+
+```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
+# Main analysis package
+library(methylKit)
+# Annotation package
+library(genomation)
+library(GenomicRanges)
+library(tidyverse)
+library(ggrepel)
+library(biomaRt)
+library(DT)
+```
+
+# Brain
+
+```{r, message=FALSE, warning=FALSE}
+# Define the list containing the bismark coverage files.
+file.names <- list.files("C:/Users/MauricioRoza/OneDrive/PhD/Linuron multigenerational/Sequencing analysis/methylation_coverage/", full.names = TRUE)
+file.names2 <- as.list(file.names)
+
+# Sorting files order
+brain <- file.names2[grep("_B_", file.names2)]  
+brain <- as.list(unlist(brain)[order(substr(unlist(brain), start = 118, stop = max(nchar(unlist(brain)))))])
+#brain
+
+# Read the listed files into a methylRawList object making sure the other parameters are filled in correctly.
+myobj.brain <- methRead(brain,
+                  sample.id=list("Brain_C1", "Brain_C2", "Brain_C3", "Brain_C4", "Brain_C5", "Brain_C6", "Brain_C7", 
+                                 "Brain_H1", "Brain_H2", "Brain_H3","Brain_H6", "Brain_H7", "Brain_H9", "Brain_H4", "Brain_H5", "Brain_H8"),
+                  pipeline = "bismarkCoverage",
+                  assembly="Xtro10.0",
+                  treatment=c(0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1),
+                  mincov = 3
+)
+
+# Change chromosome names
+chr.alias <- read.table("C:/Users/MauricioRoza/OneDrive/PhD/Linuron multigenerational/Sequencing analysis/Xtro_chromAlias.txt", header = TRUE)
+chr.alias$ensembl <- chr.alias$genbank
+chr.alias[c(1:10),5] <- c(1,10,2,3,4,5,6,7,8,9)
+
+chr.name1 <- as.list(chr.alias$genbank)
+chr.name2 <- as.list(chr.alias$ucsc)
+
+for(i in 1:length(myobj.brain)){
+  for(x in 1:length(chr.name1)){
+  myobj.brain[[i]]$chr[myobj.brain[[i]]$chr == chr.name1[[x]]] <- chr.name2[[x]]
+}}
+
+# Check chromosome names
+#levels(as.factor(myobj.brain[[1]]$chr))
+
+
+
+#Summarize methylated/unmethylated base counts over 100bp tilling windows accross genome
+myobj.brain.tile <- tileMethylCounts(myobj.brain, win.size = 100, step.size = 100)
+
+```
+
+## Methylation percentage / Read coverage per sample
+
+```{r}
+# check number of samples
+#myobj.brain.tile
+
+# What type of data is stored here?
+#head(myobj.brain.tile[[1]])
+
+# Get a histogram of the methylation percentage per sample
+lapply(myobj.brain.tile, function(x) {getMethylationStats(x, plot=TRUE, both.strands=FALSE)})
+
+# Get a histogram of the read coverage per sample
+lapply(myobj.brain.tile, function(x) {getCoverageStats(x, plot=TRUE, both.strands=FALSE)})
+```
+
+## Filtering
+
+Number of CpGs covered:
+
+```{r message=FALSE, warning=FALSE}
+min <- 4L #minimum number of samples per group
+
+# Filter step = Discards bases with coverage below 10 reads and above 99.9th percentile
+myobj.filt.brain <- filterByCoverage(myobj.brain.tile,
+                               lo.count=10,
+                               lo.perc=NULL,
+                               hi.count=NULL,
+                               hi.perc=99.9)
+# Normalization
+myobj.filt.norm.brain <- normalizeCoverage(myobj.filt.brain, method = "median")
+
+# Merge data
+meth.brain <- methylKit::unite(myobj.filt.norm.brain, destrand=FALSE, min.per.group = min) #min.per.group = minimum number of samples per replicate needed to cover a region/base
+
+# Number of regions covered
+nrow(meth.brain)
+```
+
+## Further Filtering
+
+Distribution of the per-CpG standard deviation to determine a suitable cutoff
+
+```{r}
+##Further Filtering
+
+# get percent methylation matrix
+pm.brain=percMethylation(meth.brain)
+
+# calculate standard deviation of CpGs
+sds.brain=matrixStats::rowSds(pm.brain, na.rm = TRUE)
+
+# Visualize the distribution of the per-CpG standard deviation
+# to determine a suitable cutoff
+hist(sds.brain, breaks = 100)
+
+# keep only CpG with standard deviations larger than 2%
+meth.brain <- meth.brain[sds.brain > 2]
+```
+
+Keep only CpG with standard deviations larger than 2%. This leaves us with this number of CpG regions:
+
+```{r}
+# This leaves us with this number of CpG regions
+nrow(meth.brain)
+```
+
+## Data Structure/Outlier Detection
+
+```{r warning=FALSE}
+##Data Structure/Outlier Detection
+
+# Correlation matrix
+getCorrelation(meth.brain,plot=TRUE)
+
+# Hierarchical clustering
+clusterSamples(meth.brain, dist="correlation", method="ward.D", plot=TRUE)
+
+# Principal Component Analysis
+PCASamples(meth.brain, comp = c(1,2))
+```
+
+## Brain Differentially Methylated Regions
+
+Histogram p-values, q-values(adjusted for FDR) and % methilation difference between control and treatment
+
+```{r warning=FALSE}
+# Test for differential methylation... This might take a few minutes.
+myDiff.brain <- calculateDiffMeth(meth.brain,
+                            overdispersion = "MN",
+                            adjust="SLIM",
+                            test = "Chisq")
+
+#Save data in RData file
+brain.meth.dir <- c("../data/myDiff.brain.RData")
+save(myDiff.brain, ascii=FALSE, file=brain.meth.dir)
+rm(myDiff.brain)
+load(brain.meth.dir)
+myDiff.brain
+
+#Histograms of pvalue distribution
+hist(myDiff.brain$pvalue)
+hist(myDiff.brain$qvalue)
+hist(myDiff.brain$meth.diff)
+```
+
+List with all Brain Differentially Methylated Regions
+
+```{r}
+# get all differentially methylated bases and order by qvalue
+myDiff10p.brain <- getMethylDiff(myDiff.brain,
+                           difference=meth.cut,
+                           qvalue=qvalue.cut)
+myDiff10p.brain <- myDiff10p.brain[order(myDiff10p.brain$qvalue),]
+
+myDiff10p.brain %>% datatable
+```
+
+## CpG Annotation
+
+```{r eval=FALSE, include=FALSE}
+#Chunk disabled after running once
+#Load .bed file converted from ensembl gtf2 annotation data file
+
+Xtro10_ensemble_gtf2bed.bed <- read.table("../annotations/Xtro10_ensemble_gtf2bed.bed", header = FALSE)
+Xtro10_ensemble_gtf2bed.bed %>% str
+
+levels(as.factor(Xtro10_ensemble_gtf2bed.bed$V1))
+
+#Change chromosome names format
+chr.alias <- read.table("C:/Users/MauricioRoza/OneDrive/PhD/Linuron multigenerational/Sequencing analysis/Xtro_chromAlias.txt", header = TRUE)
+chr.alias$ensembl <- chr.alias$genbank
+chr.alias[c(1:10),5] <- c(1,10,2,3,4,5,6,7,8,9)
+
+Xtro10_ensemble_gtf2bed.bed = data.frame(Xtro10_ensemble_gtf2bed.bed) %>%
+  left_join(
+    dplyr::select(chr.alias, ensembl, ucsc),
+    by = c("V1" = "ensembl")
+  ) %>%
+  mutate(V1 = coalesce(ucsc, V1)) %>%
+  dplyr::select(-ucsc)
+
+#Save .bed file with changed chromosome name format
+write.table(Xtro10_ensemble_gtf2bed.bed, file = "../annotations/Xtro10_ensemble_gtf2bed_ucsc_chr.bed", row.names = FALSE, col.names = FALSE, sep = "\t", quote = FALSE)
+
+Xtro10_ensemble_gtf2bed_ucsc_chr.bed <- read.table("../annotations/Xtro10_ensemble_gtf2bed_ucsc_chr.bed", header = FALSE)
+str(Xtro10_ensemble_gtf2bed_ucsc_chr.bed)
+
+```
+
+```{r}
+###CpG annotation
+
+# First load the annotation data; i.e the coordinates of promoters, TSS, intron and exons
+
+ensembl_anot.brain <- readTranscriptFeatures("../annotations/Xtro10_ensemble_gtf2bed_ucsc_chr.bed", up.flank = 2000, down.flank = 2000) # 2000bp flank regions correspond to promoters. Upstream for + strand, downstream for - strand 
+
+# Annotate hypermethylated CpGs ("target") with promoter/exon/intron
+# information ("feature"). This function operates on GRanges objects, so we # first coerce the methylKit object to GRanges.
+myDiff10p.anot.brain <- annotateWithGeneParts(target = as(myDiff10p.brain,"GRanges"),
+                                              feature = ensembl_anot.brain, intersect.chr = TRUE, strand = TRUE)
+
+getTargetAnnotationStats(myDiff10p.anot.brain, percentage=FALSE,precedence=TRUE)
+
+# Summary of target set annotation
+myDiff10p.anot.brain
+
+# View the distance to the nearest Transcription Start Site; the target.row column in the output indicates the row number in the initial target set
+dist_tss.brain <- getAssociationWithTSS(myDiff10p.anot.brain)
+hist(dist_tss.brain$dist.to.feature)
+```
+
+Count of differentially methylated CpGs within promoters,introns or exons
+
+```{r}
+# See whether the differentially methylated CpGs are within promoters,introns or exons; the order is the same as the target set
+feature.sum.brain <- genomation::getMembers(myDiff10p.anot.brain)
+apply(feature.sum.brain, 2, FUN = sum)
+
+sum.brain <- apply(feature.sum.brain, 2, FUN = sum) %>% t %>% data.frame %>%
+  mutate(intergenic = nrow(myDiff10p.brain) - sum(.)) %>%
+  mutate(total = sum(.))
+sum.brain
+
+feature.dmr.brain <- feature.sum.brain %>% data.frame %>%
+  mutate(location = case_when(
+    prom == 1 ~ "promoter",
+    exon == 1 ~ "exon",
+    intron == 1 ~ "intron",
+    TRUE ~ "intergenic"
+  ))
+
+# This can also be summarized for all differentially methylated CpGs
+genomation::plotTargetAnnotation(myDiff10p.anot.brain, main = "Brain Differentially Methylated Regions Genomic Features")
+```
+
+```{r, eval=FALSE, warning=FALSE, include=FALSE}
+# Select a mart and data set        
+mart <- biomaRt::useDataset(dataset = "xtropicalis_gene_ensembl",         
+                            mart    = useMart("ENSEMBL_MART_ENSEMBL",       
+                                              host    = "https://www.ensembl.org"))   
+
+martfile <- c("../data/mart_xtropicalis_gene_ensembl.RData")
+save(mart, ascii=FALSE, file=martfile)
+
+load(martfile)
+mart
+
+#Download annotations from ensembl biomaRt
+xen.biomart <- biomaRt::getBM(attributes = 
+                                c("ensembl_gene_id","external_gene_name","chromosome_name", 
+                                  "start_position","end_position","description"
+                                  ),       
+                              filters    = "",
+                              values = "",
+                              mart       = mart) 
+
+c("go_id","name_1006","definition_1006","go_linkage_type")
+
+#Change chomosome names
+chr.alias.biomart <- read.table("C:/Users/MauricioRoza/OneDrive/PhD/Linuron multigenerational/Sequencing analysis/Xtro_chromAlias.txt", header = TRUE)
+chr.alias.biomart$ensembl <- chr.alias.biomart$genbank
+chr.alias.biomart[c(1:10),5] <- c(1,10,2,3,4,5,6,7,8,9)
+
+xen.biomart = xen.biomart %>%
+  ## join the relevant alias column into xen biomart
+  left_join(
+    dplyr::select(chr.alias.biomart, ensembl, ucsc),
+    by = c("chromosome_name" = "ensembl")
+  ) %>%
+  ## replace all chromosome_names with ucsc value (if not NA)
+  mutate(chromosome_name = coalesce(ucsc, chromosome_name)) %>%
+  ## drop ucsc columns
+  dplyr::select(-ucsc)
+
+write.table(xen.biomart, file = "../annotations/xen.biomart.txt", row.names = FALSE, col.names = TRUE)
+```
+
+## Annotated genes associated with DMR
+
+```{r}
+xen.biomart <- read.table("../annotations/xen.biomart.txt", header = TRUE)
+mart <- biomaRt::useDataset(dataset = "xtropicalis_gene_ensembl",         
+                            mart    = useMart("ENSEMBL_MART_ENSEMBL",       
+                                              host    = "https://www.ensembl.org"))   
+
+martfile <- c("../data/mart_xtropicalis_gene_ensembl.RData")
+save(mart, ascii=FALSE, file=martfile)
+
+load(martfile)
+mart
+
+
+# Table overlapping CpG regions with associated genes
+
+library(ChIPpeakAnno)
+
+# Add methylation difference and qvalues to the table
+metadata.brain <- getData(myDiff10p.brain)
+
+# Transform the differentially methylated regions into a GRanges object
+meth_pos.brain <- GRanges(
+  seqnames = myDiff10p.brain$chr, 
+  ranges = IRanges(start = myDiff10p.brain$start, end = myDiff10p.brain$end),
+  mcols = cbind(metadata.brain[, c(5:7)])
+)
+
+# Get annotation from Xenopus mart
+xtro <- getAnnotation(mart, featureType = "TSS")
+
+# Annotate DMRs with overlapping genes and promoters
+res.brain <- annotatePeakInBatch(meth_pos.brain, AnnotationData = xtro, FeatureLocForDistance="TSS", output = "overlapping", maxgap = 2000, multiple = TRUE) %>% data.frame
+
+# Add gene names and description to the table
+t.brain <- res.brain %>%
+  left_join(
+    dplyr::select(xen.biomart, ensembl_gene_id, external_gene_name, description),
+    by = c("feature" = "ensembl_gene_id")) %>%
+  filter(!grepl('chrUn_', seqnames))
+
+t.brain[,c(1:3,6:8,10,14,18:19)] %>% datatable
+
+# Annotate DMRs location (intron, exon or promoter)
+anot.brain <- res.brain
+anot.brain$strand <- anot.brain$feature_strand %>% replace_na(., "*")
+
+anot.brain <- annotateWithGeneParts(target = as(anot.brain,"GRanges"),
+                                              feature = ensembl_anot.brain, intersect.chr = TRUE, strand = TRUE)
+sum.anot.brain <- data.frame(anot.brain@members)
+apply(sum.anot.brain, 2, FUN = sum)
+
+cbind(t.brain, sum.anot.brain)
+```
+
+## Volcano Plot
+
+```{r}
+#plot paramenters
+brain.plot <- merge(getData(myDiff.brain) , t.brain, all.x = TRUE) %>%
+  mutate(methylation_status = case_when(
+    meth.diff > meth.cut & qvalue < qvalue.cut ~ "Hypermethylated",
+    meth.diff < -meth.cut & qvalue < qvalue.cut ~ "Hypomethylated",
+    TRUE ~ "N.S."
+  ))
+
+#ggplot
+plot.brain <- ggplot(data=brain.plot, aes(x=meth.diff, y=-log10(qvalue), col=methylation_status)) +
+  geom_point() + 
+  theme_minimal() +
+  scale_color_manual(values=c("mediumblue", "firebrick", "gray")) +
+  geom_vline(xintercept=c(-meth.cut, meth.cut), col="gray57", linetype = "longdash") +
+  geom_hline(yintercept=-log10(qvalue.cut), col="gray57", linetype = "longdash") +
+  labs(title = "Brain Differentially Methylated Regions",
+    subtitle =paste("qvalue <", as.character(qvalue.cut), "& |methylation difference| >=", 
+    as.character(meth.cut), "%")) +
+  xlab("% Methylation Change")
+
+plot.brain
+```
+
+## DMRs in CpG Islands or shores
+
+Sum of CpG regions on islands or shores
+
+```{r}
+# Load the CpGi info
+cpg_anot <- readFeatureFlank("C:/Users/MauricioRoza/OneDrive/PhD/Linuron multigenerational/Sequencing analysis/CpG_Xtro10.txt", feature.flank.name = c("CpGi", "shores"), flank=2000)
+
+diffCpGann.brain <- annotateWithFeatureFlank(as(myDiff10p.brain,"GRanges"), feature = cpg_anot$CpGi, flank = cpg_anot$shores, feature.name = "CpGi", flank.name = "shores")
+
+# See whether the regions in myDiff10p belong to a CpG Island or Shore
+features.cpgi <- genomation::getMembers(diffCpGann.brain)
+apply(features.cpgi, 2, FUN = sum)
+```
+
+Percentage of CpG on Islands, shores or open sea
+
+```{r}
+# This can also be summarized for all differentially methylated CpGs
+genomation::plotTargetAnnotation(diffCpGann.brain, main = "Differential Methylation Annotation")
+```
+
+## Gene Ontology
+
+```{r eval=FALSE, include=FALSE}
+# Make org.db database for Xenopus tropicalis
+# Run once
+
+library(AnnotationHub)
+hub <- AnnotationHub()
+q <- query(hub, c("org.Xenopus_tropicalis.eg.sqlite","Xenopus tropicalis"))
+q
+q$title
+q$rdataclass
+
+id <- q$ah_id[length(q)]
+Xt <- hub[[id]]
+godata(Xt)
+##### Build OrgDb
+
+library(AnnotationForge)
+file.copy(AnnotationHub::cache(hub["AH105007"]), "./org.Xt.eg.sqlite")
+
+seed <- new("AnnDbPkgSeed", Package = "Ens.Xt", Version = "0.0.1",Author = "Mauricio Roza", Maintainer = "Mauricio Roza <mauricio.roza@aces.su.se>", PkgTemplate = "NOSCHEMA.DB", AnnObjPrefix = "org.Xt.eg.sqlite", organism = "Xenopus tropicalis", species = "Xenopus tropicalis", biocViews = "annotation", manufacturerUrl = "none", manufacturer = "none", chipName = "none")
+makeAnnDbPkg(seed, "org.Xt.eg.sqlite")
+
+install.packages("org.Xt.eg.db/", type = "source", repos = NULL)
+
+library(org.Xt.eg.db)
+```
+
+Brain Differentially Methylated Regions
+
+```{r error=TRUE, message=FALSE, warning=FALSE}
+library(clusterProfiler)
+library(org.Xt.eg.db)
+
+gene.brain <- as.character(res.brain$feature)
+
+# Remove duplicated genes
+gene.brain %>% na.omit %>% unique %>% length
+
+#gene ontology terms BP biological function
+ggo.brain <- groupGO(gene     = gene.brain,
+               OrgDb    = org.Xt.eg.db,
+               keyType = "ENSEMBL",
+               ont      = "BP",
+               readable = TRUE,
+               level = 2)
+
+ggo.brain@result %>% datatable
+
+ggo.brain %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20)
+
+#gene onlogy terms CC cellular compartment
+ggo.brain.cc <- groupGO(gene     = gene.brain,
+               OrgDb    = org.Xt.eg.db,
+               keyType = "ENSEMBL",
+               ont      = "CC",
+               readable = TRUE)
+
+ggo.brain.cc@result %>% datatable
+
+ggo.brain.cc %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20)
+
+#gene onlogy terms MF molecular function
+ggo.brain.mf <- groupGO(gene     = gene.brain,
+               OrgDb    = org.Xt.eg.db,
+               keyType = "ENSEMBL",
+               ont      = "MF",
+               readable = TRUE)
+
+ggo.brain.mf@result %>% datatable
+
+ggo.brain.mf %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20)
+
+#GO gene set enrichment
+ego.brain <- enrichGO(gene          = gene.brain,
+                OrgDb         = org.Xt.eg.db,
+                keyType = "ENSEMBL",
+                ont           = "ALL",
+                pAdjustMethod = "BH",
+                pvalueCutoff = 1,
+                qvalueCutoff = 0.5,
+        readable      = TRUE)
+
+data.frame(ego.brain) %>% datatable
+
+print.ego.brain <- data.frame(ego.brain)
+
+barplot(ego.brain, color = "pvalue", showCategory = 10, title = "GO enrichment brain - Diff meth regions")
+```
+
+## KEGG pathways
+
+Kegg gene enrichment
+
+```{r, error=TRUE}
+
+# Convert Ensembl gene to Entrezgene
+ens.to.entrez.gene.brain = getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', "entrezgene_description", "entrezgene_accession"),
+              filters = 'ensembl_gene_id', 
+              values = res.brain$feature, 
+              uniqueRows = TRUE,
+              mart = mart)
+
+ens.to.entrez.gene.brain = ens.to.entrez.gene.brain %>% filter(duplicated(ensembl_gene_id) == FALSE)
+
+gene.brain.entrez <- as.character(ens.to.entrez.gene.brain$entrezgene_id) %>% na.omit
+
+# KEGG gene enrichment analysis
+kk.brain <- enrichKEGG(gene         = gene.brain.entrez,
+                 organism     = 'xtr',
+                 pvalueCutoff = 0.5,
+                 qvalueCutoff = 0.05,
+                 pAdjustMethod = "BH",
+                 use_internal_data = FALSE)
+
+data.frame(kk.brain) %>% datatable
+
+df.kk.brain <- data.frame(kk.brain) 
+
+# Convert Entrez gene number to gene names
+print.kk.brain <- df.kk.brain %>% tidyr::separate(
+    data = .,
+    col = geneID,
+    sep = "/",
+    into = c(as.character(1:max(df.kk.brain$Count))),
+    fill = "right"
+    )
+kk.brain.genes <- print.kk.brain %>% dplyr::select(c(as.character(1:max(print.kk.brain$Count)))) %>% as_vector
+
+conv.kk.brain.genes = getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', "entrezgene_description", "entrezgene_accession", "external_gene_name"),
+              filters = 'entrezgene_id', 
+              values = kk.brain.genes, 
+              uniqueRows = TRUE,
+              mart = mart)
+
+conv.kk.brain.genes$entrezgene_id <- as.character(conv.kk.brain.genes$entrezgene_id)
+
+kk.brain.genes = kk.brain.genes %>% as.character %>% tibble %>%
+  ## join the relevant alias column into xen biomart
+  left_join(
+    dplyr::select(tibble(conv.kk.brain.genes), entrezgene_id, entrezgene_accession),
+    by = c("." = "entrezgene_id")
+  ) %>% na.omit %>% unique
+
+names.kk.brain <- as.character(kk.brain.genes$entrezgene_accession)
+names(names.kk.brain) <- kk.brain.genes$.
+
+df.kk.brain$geneID <- str_replace_all(df.kk.brain$geneID, names.kk.brain)
+
+df.kk.brain %>% datatable
+
+barplot(kk.brain, showCategory = 10, title = "KEGG pathways brain - Brain Differentially Methylated Regions (tiles)")
+
+kk.brain %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20, title = "KEGG Pathways Enrichment - Brain")
+
+```
+# Testis
+
+```{r Read coverage files, message=FALSE, warning=FALSE}
+# Define the list containing the bismark coverage files.
+file.names <- list.files("C:/Users/MauricioRoza/OneDrive/PhD/Linuron multigenerational/Sequencing analysis/methylation_coverage/", full.names = TRUE)
+file.names2 <- as.list(file.names)
+
+# Sorting files order
+testis <- file.names2[grep("_T_", file.names2)]  
+testis <- as.list(unlist(testis)[order(substr(unlist(testis), start = 118, stop = max(nchar(unlist(testis)))))])
+testis
+
+listnames <-list("testis_C2", "testis_C3", "testis_C4", "testis_C5", "testis_C6", "testis_C7", 
+  "testis_H1", "testis_H2", "testis_H4", "testis_H5", "testis_H6", "testis_H7", "testis_H3", "testis_H8", "testis_H9")
+
+# read the listed files into a methylRawList object making sure the other
+# parameters are filled in correctly.
+
+
+myobj.testis <- methRead(testis,
+                          sample.id=list("testis_C2", "testis_C3", "testis_C4", "testis_C5", "testis_C6", "testis_C7", 
+                                         "testis_H1", "testis_H2", "testis_H4", "testis_H5", "testis_H6", "testis_H7", "testis_H3", "testis_H8", "testis_H9"),
+                          pipeline = "bismarkCoverage",
+                          assembly="Xtro10.0",
+                          treatment=c(0,0,0,0,0,0,1,1,1,1,1,1,1,1,1),
+                          mincov = 3
+) 
+
+# Change chromosome names
+chr.alias <- read.table("C:/Users/MauricioRoza/OneDrive/PhD/Linuron multigenerational/Sequencing analysis/Xtro_chromAlias.txt", header = TRUE)
+
+chr.name1 <- as.list(chr.alias$genbank)
+chr.name2 <- as.list(chr.alias$ucsc)
+
+for(i in 1:length(myobj.testis)){
+  for(x in 1:length(chr.name1)){
+  myobj.testis[[i]]$chr[myobj.testis[[i]]$chr == chr.name1[[x]]] <- chr.name2[[x]]
+}}
+
+# Check chromosome names
+#levels(as.factor(myobj.testis[[1]]$chr))
+
+lapply(myobj.testis, FUN = nrow) %>% unlist %>% mean
+lapply(myobj.testis, FUN = nrow) %>% unlist %>% sd
+
+
+myobj.testis.tile <- tileMethylCounts(myobj.testis, win.size = 100, step.size = 100)
+
+
+```
+
+## Methylation percentage / Read coverage per sample
+
+```{r}
+# check number of samples
+#myobj.testis.tile
+
+# What type of data is stored here?
+#head(myobj.testis.tile[[1]])
+
+# Get a histogram of the methylation percentage per sample
+lapply(myobj.testis.tile, function(x) {getMethylationStats(x, plot=TRUE, both.strands=FALSE)})
+
+# Get a histogram of the read coverage per sample
+lapply(myobj.testis.tile, function(x) {getCoverageStats(x, plot=TRUE, both.strands=FALSE)})
+```
+
+## Filtering
+
+Number of CpGs covered:
+
+```{r message=FALSE, warning=FALSE}
+min <- 4L #min.per.group unite
+
+# Filter step = Discards bases with coverage below 10 reads and above 99.9th percentile
+myobj.filt.testis <- filterByCoverage(myobj.testis.tile,
+                               lo.count=10,
+                               lo.perc=NULL,
+                               hi.count=NULL,
+                               hi.perc=99.9)
+# Normalization
+myobj.filt.norm.testis <- normalizeCoverage(myobj.filt.testis, method = "median")
+
+# Merge data
+meth.testis <- methylKit::unite(myobj.filt.norm.testis, destrand=FALSE, min.per.group = min) #min.per.group = minimum number of samples per replicate needed to cover a region/base
+
+# Number of bases covered
+nrow(meth.testis)
+```
+
+## Further Filtering
+
+Distribution of the per-CpG standard deviation to determine a suitable cutoff
+
+```{r}
+##Further Filtering
+
+# get percent methylation matrix
+pm.testis=percMethylation(meth.testis)
+
+# calculate standard deviation of CpGs
+sds.testis=matrixStats::rowSds(pm.testis, na.rm = TRUE)
+
+# Visualize the distribution of the per-CpG standard deviation
+# to determine a suitable cutoff
+hist(sds.testis, breaks = 100)
+
+# keep only CpG with standard deviations larger than 2%
+meth.testis <- meth.testis[sds.testis > 2]
+```
+
+Keep only CpG with standard deviations larger than 2%. This leaves us with this number of CpG regions:
+
+```{r}
+# This leaves us with this number of CpG regions
+nrow(meth.testis)
+```
+
+## Data Structure/Outlier Detection
+
+```{r warning=FALSE}
+##Data Structure/Outlier Detection
+
+getCorrelation(meth.testis,plot=TRUE)
+
+clusterSamples(meth.testis, dist="correlation", method="ward.D", plot=TRUE)
+
+PCASamples(meth.testis, comp = c(1,2))
+```
+
+## Testis Differentially Methylated Regions
+
+Histogram p-values, q-values(adjusted for FDR) and % methilation difference between control and treatment
+
+```{r warning=FALSE}
+# Test for differential methylation... This might take a few minutes.
+myDiff.testis <- calculateDiffMeth(meth.testis,
+                            overdispersion = "MN",
+                            adjust="SLIM",
+                            test = "Chisq")
+
+testis.meth.dir <- c("../data/myDiff.testis.RData")
+save(myDiff.testis, ascii=FALSE, file=testis.meth.dir)
+rm(myDiff.testis)
+load(testis.meth.dir)
+myDiff.testis
+
+hist(myDiff.testis$pvalue)
+hist(myDiff.testis$qvalue)
+hist(myDiff.testis$meth.diff)
+```
+
+## Overview of percentage hyper and hypo DMRs per chromosome.
+
+```{r}
+meth.cut <- 10
+qvalue.cut <- 0.05
+
+# Overview of percentage hyper and hypo CpGs per chromosome.
+diffMethPerChr(myDiff.testis, meth.cutoff = meth.cut, qvalue.cutoff = qvalue.cut)
+
+# get hyper methylated bases and order by qvalue
+myDiff10p.hyper.testis <- getMethylDiff(myDiff.testis,
+                                 difference=meth.cut,
+                                 qvalue=qvalue.cut,
+                                 type="hyper")
+myDiff10p.hyper.testis <- myDiff10p.hyper.testis[order(myDiff10p.hyper.testis$qvalue),]
+
+# get hypo methylated bases and order by qvalue
+myDiff10p.hypo.testis <- getMethylDiff(myDiff.testis,
+                                difference=meth.cut,
+                                qvalue=qvalue.cut,
+                                type="hypo")
+myDiff10p.hypo.testis <- myDiff10p.hypo.testis[order(myDiff10p.hypo.testis$qvalue),]
+
+```
+
+## List of all Testis Differentially Methylated Regions
+
+```{r}
+# get all differentially methylated bases and order by qvalue
+myDiff10p.testis <- getMethylDiff(myDiff.testis,
+                           difference=meth.cut,
+                           qvalue=qvalue.cut)
+myDiff10p.testis <- myDiff10p.testis[order(myDiff10p.testis$qvalue),]
+
+myDiff10p.testis %>% datatable
+```
+
+## CpG Annotation
+
+```{r}
+###CpG annotation
+
+# First load the annotation data; i.e the coordinates of promoters, TSS, intron and exons
+
+ensembl_anot.testis <- readTranscriptFeatures("../annotations/Xtro10_ensemble_gtf2bed_ucsc_chr.bed")
+
+
+# Annotate hypermethylated CpGs ("target") with promoter/exon/intron
+# information ("feature"). This function operates on GRanges objects, so we # first coerce the methylKit object to GRanges.
+myDiff10p.anot.testis <- annotateWithGeneParts(target = as(myDiff10p.testis,"GRanges"),
+                                              feature = ensembl_anot.testis,
+                                              strand = TRUE,
+                                              intersect.chr = TRUE)
+getTargetAnnotationStats(myDiff10p.anot.testis, percentage=FALSE,precedence=TRUE)
+
+
+# Summary of target set annotation
+myDiff10p.anot.testis
+
+# View the distance to the nearest Transcription Start Site; the target.row column in the output indicates the row number in the initial target set
+dist_tss.testis <- getAssociationWithTSS(myDiff10p.anot.testis)
+hist(dist_tss.testis$dist.to.feature)
+```
+
+Count of differentially methylated CpGs within promoters,introns or exons
+
+```{r}
+# See whether the differentially methylated CpGs are within promoters,introns or exons; the order is the same as the target set
+feature.sum.testis <- genomation::getMembers(myDiff10p.anot.testis)
+sum.testis <- apply(feature.sum.testis, 2, FUN = sum) %>% t %>% data.frame %>%
+  mutate(intergenic = nrow(myDiff10p.testis) - sum(.)) %>%
+  mutate(total = sum(.))
+sum.testis
+
+
+# This can also be summarized for all differentially methylated CpGs
+genomation::plotTargetAnnotation(myDiff10p.anot.testis, main = "Testis Differentially Methylated Regions Genomic Features")
+```
+
+```{r Get biomart annnotations, eval=FALSE, warning=FALSE, include=FALSE}
+# Select a mart and data set        
+mart <- biomaRt::useDataset(dataset = "xtropicalis_gene_ensembl",         
+                            mart    = useMart("ENSEMBL_MART_ENSEMBL",       
+                                              host    = "https://www.ensembl.org"))   
+
+#Download annotations from ensembl biomaRt
+xen.biomart <- biomaRt::getBM(attributes = 
+                                c("ensembl_gene_id","external_gene_name","chromosome_name", 
+                                  "start_position","end_position","description"
+                                  ),       
+                              filters    = "",
+                              values = "",
+                              mart       = mart) 
+
+c("go_id","name_1006","definition_1006","go_linkage_type")
+
+#Change chomosome names
+chr.alias.biomart <- read.table("C:/Users/MauricioRoza/OneDrive/PhD/Linuron multigenerational/Sequencing analysis/Xtro_chromAlias.txt", header = TRUE)
+chr.alias.biomart$ensembl <- chr.alias.biomart$genbank
+chr.alias.biomart[c(1:10),5] <- c(1,10,2,3,4,5,6,7,8,9)
+
+xen.biomart = xen.biomart %>%
+  ## join the relevant alias column into xen biomart
+  left_join(
+    dplyr::select(chr.alias.biomart, ensembl, ucsc),
+    by = c("chromosome_name" = "ensembl")
+  ) %>%
+  ## replace all chromosome_names with ucsc value (if not NA)
+  mutate(chromosome_name = coalesce(ucsc, chromosome_name)) %>%
+  ## drop ucsc columns
+  select(-ucsc)
+
+write.table(xen.biomart, "../annotations/xen.biomart.txt", row.names = FALSE, col.names = TRUE)
+```
+
+## Volcano plot with annotated genes associated with DMR
+
+```{r}
+xen.biomart <- read.table("../annotations/xen.biomart.txt", header = TRUE)
+
+# Table overlapping CpG regions with associated genes
+
+library(ChIPpeakAnno)
+
+metadata <- getData(myDiff10p.testis)
+
+meth_pos.testis <- GRanges(
+  seqnames = myDiff10p.testis$chr, 
+  ranges = IRanges(start = myDiff10p.testis$start, end = myDiff10p.testis$end),
+  mcols = metadata[, c(5:7)]
+)
+
+xtro <- getAnnotation(mart, featureType = "TSS")
+
+res.testis <- annotatePeakInBatch(meth_pos.testis, AnnotationData = xtro, FeatureLocForDistance="TSS", output = "overlapping", maxgap = 2000, multiple = TRUE) %>% data.frame
+
+t.testis <- res.testis %>%
+  left_join(
+    dplyr::select(xen.biomart, ensembl_gene_id, external_gene_name, description),
+    by = c("feature" = "ensembl_gene_id"))
+
+t.testis[,c(1:3,6:8,10,14,18:19)] %>% datatable
+
+#plot paramenters
+testis.plot <- merge(getData(myDiff.testis) , t.testis, all.x = TRUE) %>%
+  mutate(methylation_status = case_when(
+    meth.diff > meth.cut & qvalue < qvalue.cut ~ "Hypermethylated",
+    meth.diff < -meth.cut & qvalue < qvalue.cut ~ "Hypomethylated",
+    TRUE ~ "N.S."
+  ))
+
+#ggplot
+
+plot.testis <- ggplot(data=testis.plot, aes(x=meth.diff, y=-log10(qvalue), col=methylation_status)) +
+  geom_point() + 
+  theme_minimal() +
+  scale_color_manual(values=c("mediumblue", "firebrick", "gray")) +
+  geom_vline(xintercept=c(-meth.cut, meth.cut), col="gray57", linetype = "longdash") +
+  geom_hline(yintercept=-log10(qvalue.cut), col="gray57", linetype = "longdash") +
+  labs(title = "Testis Differentially Methylated Regions",
+    subtitle =paste("qvalue <", as.character(qvalue.cut), "& |methylation difference| >=", 
+    as.character(meth.cut), "%")) +
+  xlab("% Methylation Change")
+
+plot.testis
+
+ggplot(data=testis.plot, aes(x=meth.diff, y=-log10(qvalue), col=methylation_status, label = external_gene_name)) +
+  geom_point() + 
+  theme_minimal() +
+  scale_color_manual(values=c("mediumblue", "firebrick", "gray")) +
+  geom_vline(xintercept=c(-meth.cut, meth.cut), col="gray57", linetype = "longdash") +
+  geom_hline(yintercept=-log10(qvalue.cut), col="gray57", linetype = "longdash") +
+  geom_text_repel(show.legend = FALSE) +
+  labs(title = "Testis Differentially Methylated Regions",
+    subtitle =paste("qvalue <", as.character(qvalue.cut), "& |methylation difference| >=", 
+    as.character(meth.cut), "%")) +
+  xlab("% Methylation Change")
+
+```
+
+## CpG regions locations
+
+Sum of CpG regions on islands or shores
+
+```{r}
+# Load the CpG info
+cpg_anot <- readFeatureFlank("C:/Users/MauricioRoza/OneDrive/PhD/Linuron multigenerational/Sequencing analysis/CpG_Xtro10.txt", feature.flank.name = c("CpGi", "shores"), flank=2000)
+
+diffCpGann.testis <- annotateWithFeatureFlank(as(myDiff10p.testis,"GRanges"), feature = cpg_anot$CpGi, flank = cpg_anot$shores, feature.name = "CpGi", flank.name = "shores")
+
+# See whether the CpG in myDiff10p belong to a CpG Island or Shore
+features.cpgi <- genomation::getMembers(diffCpGann.testis)
+apply(features.cpgi, 2, FUN = sum)
+```
+
+Percentage of CpG on Islands, shores or open sea
+
+```{r}
+# This can also be summarized for all differentially methylated CpGs
+genomation::plotTargetAnnotation(diffCpGann.testis, main = "Differential Methylation Annotation")
+```
+
+## Differentially Methylated CpG islands
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Summarize the original object counts over a certain region, here the CpG Islands
+# You can ignore the warnings here...
+myobj_islands.testis <- regionCounts(myobj.testis, c(cpg_anot$CpGi, cpg_anot$shores))
+
+# Filter the summarized counts by coverage
+myobj_islands_filt.testis <- filterByCoverage(myobj_islands.testis,
+                                             lo.count=10,
+                                             lo.perc=NULL,
+                                             hi.count=NULL,
+                                             hi.perc=99.9)
+# Perform simple normalization
+myobj_islands_filt_norm.testis <- normalizeCoverage(myobj_islands_filt.testis, method = "median")
+
+```
+
+Number of CpG Islands
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Merge the samples again
+meth_islands.testis <- methylKit::unite(myobj_islands_filt_norm.testis, destrand=FALSE, min.per.group = min)
+nrow(meth_islands.testis)
+
+# get percent methylation matrix
+pm.testis.i=percMethylation(meth_islands.testis)
+
+# calculate standard deviation of CpGs
+sds.testis.i=matrixStats::rowSds(pm.testis.i, na.rm = TRUE)
+
+# Visualize the distribution of the per-CpG standard deviation
+# to determine a suitable cutoff
+hist(sds.testis.i, breaks = 100)
+
+# keep only CpG with standard deviations larger than 2%
+meth.testis.i <- meth_islands.testis[sds.testis.i > 2]
+nrow(meth.testis.i)
+```
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Test for differential methylation... This might take a few minutes.
+myDiff_islands.testis <- calculateDiffMeth(meth.testis.i,
+                                          overdispersion = "MN",
+                                          adjust="SLIM",
+                                          test = "Chisq")
+
+# Rank by significance
+myDiff_islands.testis <- myDiff_islands.testis[order(myDiff_islands.testis$qvalue),]
+# get all differentially methylated CpG Islands
+myDiff_islands_10p.testis <- getMethylDiff(myDiff_islands.testis,difference=meth.cut,qvalue=qvalue.cut)
+
+myDiff_islands_10p_ann.testis <- annotateWithGeneParts(as((myDiff_islands_10p.testis), "GRanges"), ensembl_anot.testis)
+# View the distance to the nearest Transcription Start Site; the target.row column indicates the row number in myDiff_islands_10p
+getAssociationWithTSS(myDiff_islands_10p_ann.testis) %>% datatable
+```
+
+## Volcano plot Differentially Methylated CpGislands+shores
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+########### CpG Islands annotations
+# convert to genomic ranges
+
+metadata.i <- getData(myDiff_islands_10p.testis)
+
+meth_pos.i <- GRanges(
+  seqnames = myDiff_islands_10p.testis$chr, 
+  ranges = IRanges(start = myDiff_islands_10p.testis$start, end = myDiff_islands_10p.testis$end),
+  mcols = metadata.i[, c(5:7)]
+)
+
+res.testis.i <- annotatePeakInBatch(meth_pos.i, AnnotationData = xtro, FeatureLocForDistance="TSS", output = "overlapping", multiple = TRUE) %>% data.frame
+
+t.testis.i <- res.testis.i %>%
+  left_join(
+    dplyr::select(xen.biomart, ensembl_gene_id, external_gene_name, description),
+    by = c("feature" = "ensembl_gene_id"))
+
+t.testis.i[,c(6:8,10,14,18:19)] %>% datatable
+
+#plot paramenters
+testis.plot.i <- merge(getData(myDiff_islands.testis) , t.testis.i, all.x = TRUE) %>%
+  mutate(methylation_status = case_when(
+    meth.diff > meth.cut & qvalue < qvalue.cut ~ "Hypermethylated",
+    meth.diff < -meth.cut & qvalue < qvalue.cut ~ "Hypomethylated",
+    TRUE ~ "N.S."
+  ))
+
+ggplot(data=testis.plot.i, aes(x=meth.diff, y=-log10(qvalue), col=methylation_status, label = external_gene_name)) +
+  geom_point() + 
+  theme_minimal() +
+  scale_color_manual(values=c("mediumblue", "firebrick", "gray")) +
+  geom_vline(xintercept=c(-meth.cut, meth.cut), col="gray57", linetype = "longdash") +
+  geom_hline(yintercept=-log10(qvalue.cut), col="gray57", linetype = "longdash") +
+  geom_text_repel(show.legend = FALSE) +
+  labs(title = "Differentially Methylated CpG Islands",
+    subtitle =paste("qvalue <", as.character(qvalue.cut), "& |methylation difference| >=", 
+    as.character(meth.cut), "%")) +
+  xlab("% Methylation Change")
+```
+
+## Differentially Methylated Promoter Regions
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Summarize the original object counts over a certain region, here the promoter
+# You can ignore the warnings here...
+myobj_promoters.testis <- regionCounts(myobj.testis, c(ensembl_anot.testis$promoters))
+
+# Filter the summarized counts by coverage
+myobj_promoters_filt.testis <- filterByCoverage(myobj_promoters.testis,
+                                             lo.count=10,
+                                             lo.perc=NULL,
+                                             hi.count=NULL,
+                                             hi.perc=99.9)
+# Perform simple normalization
+myobj_promoters_filt_norm.testis <- normalizeCoverage(myobj_promoters_filt.testis, method = "median")
+```
+
+Number of CpG promoters
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Merge the samples again
+meth_promoters.testis <- methylKit::unite(myobj_promoters_filt_norm.testis, destrand=FALSE, min.per.group = min)
+nrow(meth_promoters.testis)
+
+# get percent methylation matrix
+pm.testis.p=percMethylation(meth_promoters.testis)
+
+# calculate standard deviation of CpGs
+sds.testis.p=matrixStats::rowSds(pm.testis.p, na.rm = TRUE)
+
+# Visualize the distribution of the per-CpG standard deviation
+# to determine a suitable cutoff
+hist(sds.testis.p, breaks = 100)
+
+# keep only CpG with standard deviations larger than 2%
+meth.testis.p <- meth_promoters.testis[sds.testis.p > 2]
+nrow(meth.testis.p)
+```
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Test for differential methylation... This might take a few minutes.
+myDiff_promoters.testis <- calculateDiffMeth(meth.testis.p,
+                                          overdispersion = "MN",
+                                          adjust="SLIM",
+                                          test = "Chisq")
+
+# Rank by significance
+myDiff_promoters.testis <- myDiff_promoters.testis[order(myDiff_promoters.testis$qvalue),]
+# get all differentially methylated CpG promoters
+myDiff_promoters_10p.testis <- getMethylDiff(myDiff_promoters.testis,difference=meth.cut,qvalue=qvalue.cut)
+
+myDiff_promoters_10p_ann.testis <- annotateWithGeneParts(as((myDiff_promoters_10p.testis), "GRanges"), ensembl_anot.testis)
+# View the distance to the nearest Transcription Start Site; the target.row column indicates the row number in myDiff_promoters_10p
+tss.dist.promoters <- (getAssociationWithTSS(myDiff_promoters_10p_ann.testis))
+hist(tss.dist.promoters$dist.to.feature)
+
+```
+
+## Volcano plot Differentially Methylated Promoters
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+########### CpG promoters annotations
+
+metadata.p <- getData(myDiff_promoters_10p.testis)
+
+meth_pos.p <- GRanges(
+  strand = myDiff_promoters_10p.testis$strand,
+  seqnames = myDiff_promoters_10p.testis$chr, 
+  ranges = IRanges(start = myDiff_promoters_10p.testis$start, end = myDiff_promoters_10p.testis$end),
+  mcols = metadata.p[, c(5:7)]
+)
+
+res.testis.p <- annotatePeakInBatch(meth_pos.p, AnnotationData = xtro, FeatureLocForDistance="TSS", output = "overlapping", multiple = TRUE) %>% data.frame
+
+t.testis.p <- res.testis.p %>%
+  left_join(
+    dplyr::select(xen.biomart, ensembl_gene_id, external_gene_name, description),
+    by = c("feature" = "ensembl_gene_id"))
+
+t.testis.p[,c(6:8,10,14,18:19)] %>% datatable
+
+#plot paramenters
+testis.plot.p <- merge(getData(myDiff_promoters.testis) , t.testis.p, all.x = TRUE) %>%
+  mutate(methylation_status = case_when(
+    meth.diff > meth.cut & qvalue < qvalue.cut ~ "Hypermethylated",
+    meth.diff < -meth.cut & qvalue < qvalue.cut ~ "Hypomethylated",
+    TRUE ~ "N.S."
+  ))
+
+ggplot(data=testis.plot.p, aes(x=meth.diff, y=-log10(qvalue), col=methylation_status, label = external_gene_name)) +
+  geom_point() + 
+  theme_minimal() +
+  scale_color_manual(values=c("mediumblue", "firebrick", "gray")) +
+  geom_vline(xintercept=c(-meth.cut, meth.cut), col="gray57", linetype = "longdash") +
+  geom_hline(yintercept=-log10(qvalue.cut), col="gray57", linetype = "longdash") +
+  geom_text_repel(show.legend = FALSE) +
+  labs(title = "Differentially Methylated Promoters",
+    subtitle =paste("qvalue <", as.character(qvalue.cut), "& |methylation difference| >=", 
+    as.character(meth.cut), "%")) +
+  xlab("% Methylation Change")
+
+```
+
+## Gene Ontology
+
+Testis Differentially Methylated Regions
+
+```{r error=TRUE, message=FALSE, warning=FALSE}
+library(clusterProfiler)
+library(org.Xt.eg.db)
+
+gene.testis <- as.character(res.testis$feature) %>% na.omit
+
+gene.testis %>% unique %>% length
+
+ggo.testis <- groupGO(gene     = gene.testis,
+               OrgDb    = org.Xt.eg.db,
+               keyType = "ENSEMBL",
+               ont      = "BP",
+               readable = TRUE)
+
+ggo.testis@result %>% datatable
+
+ggo.testis %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20)
+
+
+ego.testis <- enrichGO(gene          = gene.testis,
+                OrgDb         = org.Xt.eg.db,
+                keyType = "ENSEMBL",
+                ont           = "ALL",
+                pAdjustMethod = "BH",
+                pvalueCutoff = 1,
+                qvalueCutoff = 0.05,
+        readable      = TRUE)
+
+data.frame(ego.testis) %>% datatable
+
+categorys <- c("neuron differentiation", "neurogenesis", "generation of neurons", "neuron development", "regulation of cell differentiation", "neuron projection guidance")
+
+barplot(ego.testis, color = "p.adjust", showCategory = 15, title = "GO enrichment testis - Diff meth regions/tiles")
+
+#goplot(ego, showCategory = 10)
+
+```
+
+Differentially Methylated Promoters
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+gene.testis.prom <- as.character(res.testis.p$feature)
+
+
+ggo.testis.prom <- groupGO(gene     = gene.testis.prom,
+               OrgDb    = org.Xt.eg.db,
+               keyType = "ENSEMBL",
+               ont      = "BP",
+               readable = TRUE)
+
+ggo.testis.prom@result %>% datatable
+
+
+ego.testis.prom <- enrichGO(gene          = gene.testis.prom,
+                OrgDb         = org.Xt.eg.db,
+                keyType = "ENSEMBL",
+                ont           = "ALL",
+                pAdjustMethod = "BH",
+                pvalueCutoff = 0.05,
+                qvalueCutoff = 1,
+        readable      = TRUE)
+data.frame(ego.testis.prom) %>% datatable
+
+categorys <- c("neuron differentiation", "neurogenesis", "generation of neurons", "neuron development", "regulation of cell differentiation", "neuron projection guidance")
+
+barplot(ego.testis.prom, color = "p.adjust", showCategory = 10, title = "GO enrichment testis - Diff meth promoters")
+
+#goplot(ego,testis.prom, showCategory = 10)
+```
+
+Differentially methylated Islands
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+gene.testis.i <- as.character(res.testis.i$feature)
+
+ggo.testis.i <- groupGO(gene     = gene.testis.i,
+               OrgDb    = org.Xt.eg.db,
+               keyType = "ENSEMBL",
+               ont      = "BP",
+               readable = TRUE)
+
+ggo.testis.i@result %>% datatable
+
+
+ego.testis.i <- enrichGO(gene          = gene.testis.i,
+                OrgDb         = org.Xt.eg.db,
+                keyType = "ENSEMBL",
+                ont           = "ALL",
+                pAdjustMethod = "BH",
+                pvalueCutoff = 0.05,
+                qvalueCutoff = 1,
+        readable      = TRUE)
+
+data.frame(ego.testis.i) %>% datatable
+
+barplot(ego.testis.i, color = "p.adjust", showCategory = 10, title = "GO enrichment testis - Diff meth islands")
+
+#goplot(ego,testis.i, showCategory = 10)
+```
+
+## Enrich KEGG
+
+DMRs
+
+```{r, error=TRUE}
+entrez.gene.testis = getBM(attributes = c('ensembl_gene_id', 'entrezgene_id'), 
+              filters = 'ensembl_gene_id', 
+              values = res.testis$feature, 
+              mart = mart)
+
+
+gene.testis <- as.character(entrez.gene.testis$entrezgene_id) %>% na.omit
+
+kk.testis <- enrichKEGG(gene         = gene.testis,
+                 organism     = 'xtr',
+                 pvalueCutoff = 0.05,
+                 pAdjustMethod = "BH",
+                 use_internal_data = FALSE)
+
+data.frame(kk.testis) %>% datatable
+
+barplot(kk.testis, showCategory = 10, title = "KEGG pathways testis - Testis Differentially Methylated Regions (tiles)")
+
+```
+
+Differentially methylated promoters
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+entrez.gene.testis.p = getBM(attributes = c('ensembl_gene_id', 'entrezgene_id'), 
+              filters = 'ensembl_gene_id', 
+              values = res.testis.p$feature, 
+              mart = mart)
+
+entrez.gene.testis.p = entrez.gene.testis.p %>% filter(duplicated(ensembl_gene_id) == FALSE)
+
+gene.testis.p <- as.character(entrez.gene.testis.p$entrezgene_id) %>% na.omit
+
+kk.testis.prom <- enrichKEGG(gene         = gene.testis.p,
+                 organism     = 'xtr',
+                 pvalueCutoff = 1,
+                 pAdjustMethod = "BH",
+                 use_internal_data = FALSE)
+
+data.frame(kk.testis.prom) %>% datatable
+
+barplot(kk.testis.prom, showCategory = 10, title = "KEGG pathways testis - Differentially methylated promoters")
+```
+
+Differentially methylated Islands
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+entrez.gene.testis.i = getBM(attributes = c('ensembl_gene_id', 'entrezgene_id'), 
+              filters = 'ensembl_gene_id', 
+              values = res.testis.i$feature, 
+              mart = mart)
+
+gene.testis.i <- as.character(entrez.gene.testis.i$entrezgene_id) %>% na.omit
+
+kk.testis.i <- enrichKEGG(gene         = gene.testis.i,
+                 organism     = 'xtr',
+                 pvalueCutoff = 0.05,
+                 pAdjustMethod = "BH",
+                 use_internal_data = FALSE)
+
+data.frame(kk.testis.i) %>% datatable
+
+barplot(kk.testis.i, showCategory = 10)
+```
+
+# Venn diagram
+
+```{r warning=TRUE}
+library(ggVennDiagram)
+
+venn.brain <- t.brain %>% tidyr::unite("loc", c("seqnames", "start", "end"), remove = FALSE)
+
+venn.testis <- t.testis %>% tidyr::unite("loc", c("seqnames", "start", "end"), remove = FALSE)
+
+venn.feature <- venn.brain[,c(1,9,11)] %>%
+  left_join(
+    venn.testis[,c(1,9,11,19,20)],
+    by = c("feature" = "feature"), suffix = c(".brain", ".testis")
+  ) %>% na.omit
+
+venn.feature %>% datatable
+
+venn.dmr <- venn.brain[,c(1,9,11)] %>%
+  left_join(
+    venn.testis[,c(1,9,11,19,20)],
+    by = c("loc" = "loc"), suffix = c(".brain", ".testis")
+  ) %>% na.omit
+
+venn.dmr %>% datatable
+
+venn.list.dmr <- list(brain = venn.brain$loc, testis = venn.testis$loc)
+
+ggVennDiagram(venn.list.dmr, category.names = c("Brain DMR", "Testis DMR"))
+
+venn.list.gene <- list(brain = venn.brain$feature, testis = venn.testis$feature)
+
+ggVennDiagram(venn.list.gene, category.names = c("Brain genes", "Testis genes"))
+
+```
+
+# GSEA from overlapped brain + testis
+
+```{r, error=TRUE}
+gene.venn <- as.character(venn.feature$feature)
+
+gene.venn %>% na.omit %>% unique %>% length
+
+#gene onlogy terms BP biological function
+ggo.venn <- groupGO(gene     = gene.venn,
+               OrgDb    = org.Xt.eg.db,
+               keyType = "ENSEMBL",
+               ont      = "BP",
+               readable = TRUE,
+               level = 2)
+
+ggo.venn@result %>% datatable
+
+ggo.venn %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20)
+
+#gene onlogy terms CC cellular compartment
+ggo.venn.cc <- groupGO(gene     = gene.venn,
+               OrgDb    = org.Xt.eg.db,
+               keyType = "ENSEMBL",
+               ont      = "CC",
+               readable = TRUE)
+
+ggo.venn.cc@result %>% datatable
+
+ggo.venn.cc %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20)
+
+#gene onlogy terms MF molecular function
+ggo.venn.mf <- groupGO(gene     = gene.venn,
+               OrgDb    = org.Xt.eg.db,
+               keyType = "ENSEMBL",
+               ont      = "MF",
+               readable = TRUE)
+
+ggo.venn.mf@result %>% datatable
+
+ggo.venn.mf %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20)
+
+#GO gene set enrichment
+ego.venn <- enrichGO(gene          = gene.venn,
+                OrgDb         = org.Xt.eg.db,
+                keyType = "ENSEMBL",
+                ont           = "ALL",
+                pAdjustMethod = "BH",
+                pvalueCutoff = 1,
+                qvalueCutoff = 0.5,
+        readable      = TRUE)
+
+data.frame(ego.venn) %>% datatable
+
+print.ego.venn <- data.frame(ego.venn)
+
+categorys <- c("postsynapse", "synapse", "dendrite", "dendritic tree", "postsynaptic specialization", "synaptic membrane", "cellular response to peptide hormone stimulus", "negative regulation of response to stimulus")
+
+barplot(ego.venn, color = "pvalue", showCategory = 10, title = "GO enrichment brain - Diff meth regions/tiles")
+
+```
+
+# Graphs enriched gene sets
+
+```{r eval=FALSE, include=FALSE}
+pm.brain2 <- pm.brain %>% data.frame
+view(pm.brain2)
+
+rownames(pm.brain2)
+
+diff.meth.brain <- getData(myDiff10p.brain)
+
+pm.brain.dm <- pm.brain2[rownames(pm.brain2) %in% rownames(diff.meth.brain),]
+view(pm.brain.dm)
+
+mergepmdiff.brain <- merge(pm.brain, diff.meth.brain, by = "row.names")
+view(mergepmdiff.brain)
+
+mart <- biomaRt::useDataset(dataset = "xtropicalis_gene_ensembl",         
+                            mart    = useMart("ENSEMBL_MART_ENSEMBL",       
+                                              host    = "https://www.ensembl.org"))
+
+meth_pos.graph.brain <- GRanges(
+  seqnames = mergepmdiff.brain$chr, 
+  ranges = IRanges(start = mergepmdiff.brain$start, end = mergepmdiff.brain$end),
+  mcols = mergepmdiff.brain[, c(2:17,22:24)]
+)
+
+xtro <- getAnnotation(mart, featureType = "TSS")
+
+graph.brain <- annotatePeakInBatch(meth_pos.graph.brain, AnnotationData = xtro, FeatureLocForDistance="TSS", output = "overlapping", maxgap = 2000, multiple = TRUE) %>% data.frame
+
+
+
+
+
+
+genes.kk.brain <- data.frame(kk.brain)
+genes.kk.brain <- genes.kk.brain %>% separate(., "geneID", into = paste0(letters[1:max(genes.kk.brain$Count)]), sep = "/") %>% dplyr::select(letters[1:max(genes.kk.brain$Count)]) %>% unlist %>% data.frame
+genes.kk.brain
+
+entrez.to.ens.gene.brain = getBM(attributes = c('ensembl_gene_id', 'entrezgene_id', "entrezgene_description", "entrezgene_accession", "description", "external_gene_name"),
+              filters = 'entrezgene_id', 
+              values = genes.kk.brain$., 
+              uniqueRows = TRUE,
+              mart = mart)
+
+t.brain.graph <- graph.brain %>%
+  left_join(
+    dplyr::select(entrez.to.ens.gene.brain, ensembl_gene_id, external_gene_name, description, entrezgene_accession),
+    by = c("feature" = "ensembl_gene_id"))
+
+
+entrez.to.ens.gene.brain = entrez.to.ens.gene.brain %>% filter(duplicated(ensembl_gene_id) == FALSE)
+
+gene.brain.ens <- as.character(entrez.to.ens.gene.brain$ensembl_gene_id) %>% na.omit
+
+graph.table.brain <- t.brain.graph[t.brain.graph$feature %in% gene.brain.ens,]
+
+graph.table.brain2 <- graph.table.brain %>%
+  mutate_all(na_if,"") %>%
+  pivot_longer(., cols = mcols.Brain_C1:mcols.Brain_H8, names_to = "id", values_to = "methylation") %>%
+  mutate_at(vars(id),  ~ str_remove_all(., "mcols.")) %>%
+  separate(., "id", into = c("Tissue","Treatment"), sep = "_", remove = FALSE, convert = TRUE) %>%
+  mutate_at(vars(Treatment), ~ str_remove_all(.,"[:digit:]"))
+
+graph.table.brain2 %>% pivot_wider(., id_cols = c("id","Treatment"), names_from = entrezgene_accession, values_from = methylation)
+
+ggplot(data = graph.table.brain2, aes(x=entrezgene_accession, y=methylation, fill=Treatment, col = Treatment)) + 
+    geom_count()
+
+p <- ggplot(data = graph.table.brain2, aes(x = entrezgene_accession, y = methylation, fill = Treatment))
+p <- p + geom_bar(width = 0.5, position = "dodge", stat = "summary", fun = "mean")
+p <- p + geom_errorbar(aes(ymin=methylation-sd(methylation), ymax=methylation+sd(methylation)), width=.2,
+                 position=position_dodge(.9))
+p
+
+
+
+library(AnnotationHub)
+ah = AnnotationHub()
+# retrieve CpG island data from annotationHub
+ahDb <- query(ah, pattern = c("Xenopus tropicalis", "EnsDb", 107))
+ahDb
+
+ahEdb <- ahDb[["AH105007"]]
+ahEdb
+
+TxByGns <- genes(ahEdb)
+TxByGns
+
+meth_pos.brain
+
+meth_pos.brain2 <- meth_pos.brain
+meth_pos.brain2@seqnames <- gsub('chr','',meth_pos.brain2@seqnames)
+meth_pos.brain2@strand <- gsub('*','"+"',meth_pos.brain2@seqnames)
+
+str(meth_pos.brain2@seqnames)
+meth_pos.brain2
+
+transcriptsByOverlaps(xtroEnsembl, meth_pos.brain2, maxgap = -1L,
+        minoverlap = 0L, type = "any")
+
+
+xtroEnsembl <- makeTxDbFromBiomart(dataset="xtropicalis_gene_ensembl")
+xtroEnsembl
+
+library(org.Xt.eg.db)
+edb.xentro <- org.Xt.eg.db
+edb.xentro
+
+cu <- GRangesFilter(meth_pos.brain2)
+anus <- transcripts(ahEdb, filter = cu)
+data.frame(anus) %>% view
+
+promoters(TxByGns, filter = cu) %>% view
+
+
+ex_by_tx <- exonsBy(ahEdb, by = "tx")
+
+extendExonsIntoIntrons(ex_by_tx)
+
+int <- intronicParts(ahEdb)
+exo <- exonicParts(ahEdb)
+
+######
+
+annotate_regions(meth_pos.brain2, "basicgenes", ignore.strand = TRUE)
+
+aaaaaa <-query(ah, pattern = c("Xenopus tropicalis", "basicgenes"))
+
+aaaaaa
+
+ahannot <- build_ah_annots(genome = "Xtro_10.0",ah_codes = "AH105768", annotation_class = "ens.gtf")
+
+
+
+## I found that the chromosome names from the RefSeq gff3 file I am using, had an "_" as in "NC_XXXXX". By merely removing the underscore from the chromosome name and then converting the gff3 using gffToGenePred and genePredToBed, the resulting BED file now appears to work with readTranscriptFeatures()
+
+gffToGenePred
+
+```
+
+## Relevant genes tables
+
+```{r}
+rlv.genes.brain <- c("grik2", "slc17a7", "grm4", "grm5", "grin1", "grm5", "grm1", "grm8", "grin2b", #glutamate signaling
+                     "gabbr1", "gabbr2", "gabrb3", #GABA signaling
+                     "dnmt3a", "hdac8", "mbd2", #methylation
+                     "gh1", "irs2", "igfbp4", "igfbp5", #somatotropic
+                     "trhr3", "trhde", "dio1", "\\btg\\b", #thyrotropic 
+                     "esrrg",
+                     "kiss2", "prkag2", "prkar1b", #GnRH signaling
+                     "hsd17b12") #steroidogenesis
+
+
+rlv.genes.table.brain <- t.brain %>%
+   filter(str_detect(external_gene_name, paste(rlv.genes.brain, collapse = "|")))
+
+geneparts.anot.brain <- annotateWithGeneParts(target = as(rlv.genes.table.brain,"GRanges"),
+                                              feature = ensembl_anot.brain, intersect.chr = TRUE, strand = TRUE)
+
+feature.brain <- genomation::getMembers(geneparts.anot.brain)
+
+feature.brain <- feature.brain %>% data.frame %>%
+  mutate(location = case_when(
+    prom == 1 ~ "promoter",
+    exon == 1 ~ "exon",
+    intron == 1 ~ "intron",
+    TRUE ~ "intergenic"
+  ))
+
+rlv.genes.table.brain <- rlv.genes.table.brain %>%
+  bind_cols(DMR_location = feature.brain[,4])
+
+rlv.genes.table.brain.final <- rlv.genes.table.brain %>%
+  dplyr::select(c(gene = "external_gene_name",
+                "DMR_location",
+                methylation_difference = "mcols.meth.diff",
+                q.value = "mcols.qvalue",
+                chromosome = "seqnames",
+                "start", "end",
+                strand = "feature_strand",
+                "description"
+                )) %>%
+      arrange(factor(gene, levels = c(
+        "grik2", "slc17a7", "grm4", "grm5", "grin1", "grm1", "grm8", "grin2b", #glutamate signaling
+                     "gabbr1", "gabbr2", "gabrb3", #GABA signaling
+                     "gh1", "irs2", "igfbp4", "igfbp5", #somatotropic
+                     "trhr3", "trhde", "dio1", "tg", #thyrotropic
+                     "kiss2", "prkag2", "prkar1b", #GnRH signaling
+                     "hsd17b12", "esrrg",
+                     "dnmt3a", "mbd2", "hdac8" #methylation
+) #steroidogenesis
+                     )) 
+rlv.genes.table.brain.final$description <- str_replace(rlv.genes.table.brain.final$description , " \\s*\\[[^\\)]+\\]", "")
+
+
+##################################
+
+
+rlv.genes.testis <- c("ep300", "elp3", "kat5", "kat14", #histone acetyltransferase
+                      "lhcgr", "hsd17b12", "esrrg",
+                      "piwil1", "mael", "spo11", "\\bddx4\\b", #spermatogenesis, gonadal development
+                      "dnmt3a"
+)
+
+rlv.genes.table.testis <- t.testis %>%
+   filter(str_detect(external_gene_name, paste(rlv.genes.testis, collapse = "|")))
+
+geneparts.anot.testis <- annotateWithGeneParts(target = as(rlv.genes.table.testis,"GRanges"),
+                                              feature = ensembl_anot.testis, intersect.chr = TRUE, strand = TRUE)
+
+feature.testis <- genomation::getMembers(geneparts.anot.testis)
+
+feature.testis <- feature.testis %>% data.frame %>%
+  mutate(location = case_when(
+    prom == 1 ~ "promoter",
+    exon == 1 ~ "exon",
+    intron == 1 ~ "intron",
+    TRUE ~ "intergenic"
+  ))
+
+rlv.genes.table.testis <- rlv.genes.table.testis %>%
+  bind_cols(DMR_location = feature.testis[,4])
+
+rlv.genes.table.testis.final <- rlv.genes.table.testis %>%
+  dplyr::select(c(gene = "external_gene_name",
+                "DMR_location",
+                methylation_difference = "mcols.meth.diff",
+                q.value = "mcols.qvalue",
+                chromosome = "seqnames",
+                "start", "end",
+                strand = "feature_strand",
+                "description"
+                )) %>%
+      arrange(factor(gene, levels = c(
+                      "piwil1", "mael", "spo11", "ddx4", #spermatogenesis, gonadal development
+                      "dnmt3a", "ep300", "elp3", "kat5", "kat14", #histone acetyltransferase, methylation
+                      "hsd17b12", "esrrg")))
+
+rlv.genes.table.testis.final$description <- str_replace(rlv.genes.table.testis.final$description , " \\s*\\[[^\\)]+\\]", "")
+
+
+
+clipr::write_clip(rlv.genes.table.brain.final)
+clipr::write_clip(rlv.genes.table.testis.final)
+
+```
+
+
+## Supplementary tables
+
+```{r eval=FALSE, include=FALSE}
+library(writexl)
+
+DMR_genes <- list("Brain" = t.brain, "Testis" = t.testis)
+GO_terms <- list("Brain" = ggo.brain@result, "Testis" = ggo.testis@result)
+GO_enrich <- list("Brain" = data.frame(ego.brain), "Testis" = data.frame(ego.testis))
+KEGG_enrich <- list("Brain" = df.kk.brain)
+
+write_xlsx(DMR_genes, path = "../supplementary_material_tables/S1_DMR_and_overlapping_genes.xlsx")
+write_xlsx(GO_terms, path = "../supplementary_material_tables/S2_GO_terms.xlsx")
+write_xlsx(GO_enrich, path = "../supplementary_material_tables/S3_GO_enrichment.xlsx")
+write_xlsx(KEGG_enrich, path = "../supplementary_material_tables/S4_KEGG_enrichment.xlsx")
+
+
+write_excel_csv(t.brain, file = "../supplementary_material_tables/S1_brain_DMR_and_overlapping_genes.csv", quote = "none", delim = '\t', col_names = TRUE, na = "", eol = "\r\n")
+
+write_excel_csv(t.testis, file = "../supplementary_material_tables/S2_testis_DMR_and_overlapping_genes.csv", quote = "none", delim = '\t', col_names = TRUE, na = "", eol = "\r\n")
+
+write_excel_csv(ggo.brain@result, file = "../supplementary_material_tables/S3_brain_GO_terms.csv", quote = "none", delim = '\t', col_names = TRUE, na = "", eol = "\r\n")
+
+write_excel_csv(ggo.testis@result, file = "../supplementary_material_tables/S4_testis_GO_terms.csv", quote = "none", delim = '\t', col_names = TRUE, na = "", eol = "\r\n")
+
+write_excel_csv(data.frame(ego.brain), file = "../supplementary_material_tables/S5_brain_GO_gene_enrichment.csv", quote = "none", delim = '\t', col_names = TRUE, na = "", eol = "\r\n")
+
+write_excel_csv(data.frame(ego.testis), file = "../supplementary_material_tables/S6_testis_GO_gene_enrichment.csv", quote = "none", delim = '\t', col_names = TRUE, na = "", eol = "\r\n")
+
+write_excel_csv(df.kk.brain, file = "../supplementary_material_tables/S7_brain_KEGG_gene_enrichment.csv", quote = "none", delim = '\t', col_names = TRUE, na = "", eol = "\r\n")
+
+```
+
+## Paper plots
+
+```{r eval=FALSE, include=FALSE}
+#DMRs
+
+brain.plot$methylation_status <- factor(brain.plot$methylation_status, levels = c("Hypomethylated", "Hypermethylated", "N.S."))
+
+plot.brain <- ggplot(data=brain.plot, aes(x=meth.diff, y=-log10(qvalue), col=methylation_status)) +
+  geom_point() +
+  theme_minimal() +
+  scale_color_manual(values=c("mediumblue", "firebrick", "gray")) +
+  geom_vline(xintercept=c(-meth.cut, meth.cut), col="gray57", linetype = "longdash") +
+  geom_hline(yintercept=-log10(qvalue.cut), col="gray57", linetype = "longdash") +
+  xlab("% Methylation Change") +
+  theme(legend.title=element_blank()) +
+  ylim(0,95)
+
+testis.plot$methylation_status <- factor(testis.plot$methylation_status, levels = c("Hypomethylated", "Hypermethylated", "N.S."))
+
+
+plot.testis <- ggplot(data=testis.plot, aes(x=meth.diff, y=-log10(qvalue), col=methylation_status)) +
+  geom_point() + 
+  theme_minimal() +
+  scale_color_manual(values=c("mediumblue", "firebrick", "gray")) +
+  geom_vline(xintercept=c(-meth.cut, meth.cut), col="gray57", linetype = "longdash") +
+  geom_hline(yintercept=-log10(qvalue.cut), col="gray57", linetype = "longdash") +
+  xlab("% Methylation Change") +
+  theme(legend.title=element_blank()) +
+  ylim(0,95)
+
+
+library(ggpubr)
+
+figure1 <- ggarrange(
+  plot.brain, 
+  plot.testis,
+  labels = c("Brain", "Testis"),
+  vjust = 1.5,
+  hjust = -0.5,
+  common.legend = TRUE,
+  legend = "bottom"
+  )
+
+
+title <- expression(atop(bold("Differentially Methylated Regions")))
+
+
+figure1.1 <- annotate_figure(figure1,
+                top = textGrob(title, gp = gpar(cex = 1.3))
+                )
+figure1.1
+
+# GO terms
+
+library(RColorBrewer)
+
+n <- 12  # Number of colors
+palette3 <- brewer.pal(n, "Set3")  # Ordinal palette
+n2 <- 8
+palette2 <- brewer.pal(n2, "Set2")  # Ordinal palette
+
+# Create a vector with 20 different colors
+colors <- rep(palette, length.out = n)
+colors2 <- rep(palette2, length.out = n2)
+
+allcolors <- c(colors, colors2)
+
+
+
+# Print the vector of colors
+print(colors)
+
+################################
+
+GObrain <- ggo.brain %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20)
+GObrain <- GObrain + scale_fill_manual(values = c(rep("blue", 20)))
+
+
+GOtestis <- ggo.testis %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20)
+GOtestis <- GOtestis + scale_fill_manual(values = c(rep("blue", 20)))
+
+
+figure2 <- ggarrange(
+  GObrain, 
+  GOtestis,
+  nrow = 1,
+  ncol = 2,
+  labels = c("Brain", "Testis")
+  )
+
+figure2
+
+#Gene enrichment
+
+gsea.brain <- barplot(ego.brain, color = "pvalue", showCategory = 10)
+
+gsea.testis <- barplot(ego.testis, color = "p.adjust", showCategory = 15)
+
+figure3 <- ggarrange(
+  gsea.brain, 
+  gsea.testis,
+  nrow = 2,
+  ncol = 1,
+  labels = c("Brain", "Testis")
+  )
+
+figure3
+
+#CpG locations
+
+brain.cpg <- myDiff10p.anot.brain@precedence %>% 
+  data.frame %>%
+  rownames_to_column(., var = "location")
+brain.cpg$location <- 
+  factor(brain.cpg$location, 
+         levels = c("promoter", "exon", "intron", "intergenic"))
+
+pie.brain <- brain.cpg %>% 
+  arrange(desc(location)) %>%
+  mutate(prop = . / sum(brain.cpg$.) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop ) %>%
+  mutate(round = round(., digits = 0))
+
+pie.graph.brain <- ggplot(pie.brain, aes(x="", y=prop, fill=location)) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  theme_void() + 
+  theme(legend.position="right") +
+  geom_text(aes(y = ypos, label = paste(round, "%")), color = "black", size=5) +
+  scale_fill_brewer(palette="Dark2") +
+  theme(legend.title=element_blank())
+
+
+testis.cpg <- myDiff10p.anot.testis@precedence %>% 
+  data.frame %>%
+  rownames_to_column(., var = "location")
+testis.cpg$location <- 
+  factor(testis.cpg$location, 
+         levels = c("promoter", "exon", "intron", "intergenic"))
+
+pie.testis <- testis.cpg %>% 
+  arrange(desc(location)) %>%
+  mutate(prop = . / sum(testis.cpg$.) *100) %>%
+  mutate(ypos = cumsum(prop)- 0.5*prop ) %>%
+  mutate(round = round(., digits = 0))
+
+pie.graph.testis <- ggplot(pie.testis, aes(x="", y=prop, fill=location)) +
+  geom_bar(stat="identity", width=1, color="white") +
+  coord_polar("y", start=0) +
+  theme_void() + 
+  theme(legend.position="right") +
+  geom_text(aes(y = ypos, label = paste(round, "%")), color = "black", size=5) +
+  scale_fill_brewer(palette="Dark2") +
+  theme(legend.title=element_blank())
+
+figure4 <- ggarrange(
+  pie.graph.brain, 
+  pie.graph.testis,
+  nrow = 1,
+  ncol = 2,
+  common.legend = TRUE,
+  legend = "bottom",
+  labels = c("Brain", "Testis")
+  )
+
+figure5 <- ggarrange(
+  NULL,
+  figure1,
+  NULL,
+  figure4,
+  nrow = 4,
+  ncol = 1,
+  labels = c("","A","", "B"),
+  vjust = -0.1,
+  heights = c(0.1, 1, 0.1, 1)
+  )
+
+#KEGG
+
+kegg.brain <- kk.brain %>% filter(., Count > 0) %>% arrange(desc(Count)) %>% barplot(., showCategory = 20, title = "KEGG Pathways Enrichment - Brain")
+
+
+#Save all figures
+
+ggsave("../../manuscripts/figures/Figure1_volcano_piechart.tiff", 
+       figure5,  
+       scale = 1.5, 
+       dpi = 300,
+       width = 15,
+       height = 15,
+       units = "cm")
+
+ggsave("../../manuscripts/figures/Figure2_GO_BF.tiff", 
+       figure2,  
+       scale = 2, 
+       dpi = 300,
+       width = 15,
+       height = 10,
+       units = "cm")
+
+ggsave("../../manuscripts/figures/Figure3_GO_gsea.tiff", 
+       figure3,  
+       scale = 1.5, 
+       dpi = 300,
+       width = 15,
+       height = 15,
+       units = "cm")
+
+ggsave("../../manuscripts/figures/Figure4_kegg.tiff", 
+       kegg.brain,  
+       scale = 1.5, 
+       dpi = 300,
+       width = 15,
+       height = 10,
+       units = "cm")
+
+```
+
+```{r}
+#volcano plot showing important genes
+important.genes.brain <- data.frame(
+  genes = c(
+                     "dnmt3a", "hdac8", "mbd2", #methylation
+                     "gh1", "igfbp4", "igfbp5", #somatotropic
+                     "trhr3", "trhde", "dio1", "tg" #thyrotropic 
+                    ),
+  func = c(rep("methylation", 3), rep("somatotropic", 3), rep("thyrotropic", 4)
+  )
+) %>% mutate(genes1 = genes)
+important.genes.brain$func <- factor(important.genes.brain$func)
+
+volcano.gene.labels.brain <- merge(brain.plot, important.genes.brain, by.x="external_gene_name", by.y = "genes1", all.x = TRUE)
+
+
+  
+imp.genes.plot.brain <- ggplot(data=volcano.gene.labels.brain, aes(x=meth.diff, y=-log10(qvalue), col=methylation_status, label = genes)) +
+  geom_point() + 
+  theme_minimal() +
+  scale_color_manual(values=c("mediumblue", "firebrick", "gray")) +
+  geom_vline(xintercept=c(-meth.cut, meth.cut), col="gray57", linetype = "longdash") +
+  geom_hline(yintercept=-log10(qvalue.cut), col="gray57", linetype = "longdash") +
+  geom_text_repel(data = subset(volcano.gene.labels.brain, methylation_status != "N.S."),
+                  color = "black",
+                    show.legend = FALSE, 
+                  nudge_y = 50, max.overlaps = 20, size=5, force = 5,
+                  box.padding = 2,
+                  segment.colour = "gray") +
+  labs(title = "Brain Differentially Methylated Regions",
+    subtitle =paste("qvalue <", as.character(qvalue.cut), "& |methylation difference| >=", 
+    as.character(meth.cut), "%")) +
+  xlab("% Methylation Change") +
+  ylim(0, 95)
+
+imp.genes.plot.brain
+
+#testis
+important.genes.testis <- data.frame(
+  genes = c("ep300", "elp3", "kat5", "kat14", #histone acetyltransferase
+                      "hsd17b12", "esrrg",
+                      "piwil1", "mael", "spo11", "\\bddx4\\b", #spermatogenesis, gonadal development
+                      "dnmt3a"
+)
+) %>% mutate(genes1 = genes)
+
+
+volcano.gene.labels.testis <- merge(testis.plot, important.genes.testis, by.x="external_gene_name", by.y = "genes1", all.x = TRUE)
+
+
+  
+imp.genes.plot.testis <- ggplot(data=volcano.gene.labels.testis, aes(x=meth.diff, y=-log10(qvalue), col=methylation_status, label = genes)) +
+  geom_point() + 
+  theme_minimal() +
+  scale_color_manual(values=c("mediumblue", "firebrick", "gray")) +
+  geom_vline(xintercept=c(-meth.cut, meth.cut), col="gray57", linetype = "longdash") +
+  geom_hline(yintercept=-log10(qvalue.cut), col="gray57", linetype = "longdash") +
+  geom_text_repel(data = subset(volcano.gene.labels.testis, methylation_status != "N.S."),
+                  color = "black",
+                    show.legend = FALSE, 
+                  nudge_y = 50, max.overlaps = 20, size=5, force = 5,
+                  box.padding = 2,
+                  segment.colour = "gray") +
+  labs(title = "testis Differentially Methylated Regions",
+    subtitle =paste("qvalue <", as.character(qvalue.cut), "& |methylation difference| >=", 
+    as.character(meth.cut), "%")) +
+  xlab("% Methylation Change") +
+  ylim(0, 95)
+
+imp.genes.plot.testis
+
+
+ggsave("../../manuscripts/figures/volcano_brain.tiff", 
+       imp.genes.plot.brain,  
+       scale = 1.5, 
+       dpi = 300,
+       width = 15,
+       height = 10,
+       units = "cm")
+
+ggsave("../../manuscripts/figures/volcano_testis.tiff", 
+       imp.genes.plot.testis,  
+       scale = 1.5, 
+       dpi = 300,
+       width = 15,
+       height = 10,
+       units = "cm")
+
+```
+
+```{r eval=FALSE, include=FALSE}
+# List all objects in the R environment
+objects <- ls()
+
+# Loop over all objects and remove only those larger than 100MB
+for (object in objects) {
+  size_mb <- object.size(get(object)) / 2^20  # Calculate size in MB
+  if (size_mb > 50) {
+    message(paste("Removing object", object, "of size", size_mb, "MB"))
+    rm(list=object, envir=.GlobalEnv)  # Remove object from global environment
+  }
+}
+```
+
