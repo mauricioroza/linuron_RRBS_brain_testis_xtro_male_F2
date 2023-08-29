@@ -59,8 +59,13 @@ annot <- t.brain %>%
 
 pointcolor <- annot %>% dplyr::select(pointcolor, loc)
 
-DMR_all <- left_join(DMR_all, pointcolor, by = "loc") %>%
-  mutate(color = if_else(is.na(pointcolor), color, pointcolor))
+DMR_all_colorcex <- left_join(DMR_all, pointcolor, by = "loc") %>%
+  mutate(color = if_else(is.na(pointcolor), color, pointcolor),
+         cex = case_when(
+           color == "green" ~ 1,
+           TRUE ~ 0.5
+         )) %>%
+  dplyr::select(-loc, -pointcolor)
 
 
 tiff("./figures/circos_brain.tiff", 
@@ -88,8 +93,8 @@ circos.genomicTrack(DMR_all,
                     stack = FALSE, 
                     ylim = c(-100, 100),
                     panel.fun = function(region, value, ...) {
-                      cex = 0.5
-                      i = DMR_all[rownames(value), 5]
+                      cex = DMR_all_colorcex[rownames(value), 6]
+                      i = DMR_all_colorcex[rownames(value), 5]
                       for(h in seq(-100, 100, by = 25)) {
                         circos.lines(CELL_META$cell.xlim, c(h, h), lty = 3, col = "#E7E7E7")
                       }
