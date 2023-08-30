@@ -557,8 +557,8 @@ gene.brain.entrez <- as.character(ens.to.entrez.gene.brain$entrezgene_id) %>% na
 kk.brain <- enrichKEGG(gene         = gene.brain.entrez,
                  organism     = 'xtr',
                  pvalueCutoff = 0.5,
-                 qvalueCutoff = 0.05,
-                 pAdjustMethod = "BH",
+                 qvalueCutoff = 0.5,
+                 pAdjustMethod = "BY",
                  use_internal_data = FALSE)
 
 data.frame(kk.brain) %>% datatable
@@ -1807,8 +1807,10 @@ figure2
 #Gene enrichment
 
 gsea.brain <- barplot(ego.brain, color = "pvalue", showCategory = 10)
+saveRDS(gsea.brain, "../data/go.or.brain.rds")
 
 gsea.testis <- barplot(ego.testis, color = "p.adjust", showCategory = 15)
+saveRDS(gsea.testis, "../data/go.or.testis.rds")
 
 figure3 <- ggarrange(
   gsea.brain, 

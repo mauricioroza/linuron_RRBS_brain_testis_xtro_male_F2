@@ -222,5 +222,16 @@ dev.off()
 # 
 # 
 
+#############
 
+gsea.testis <- readRDS("data/go.or.testis.rds")
+
+svglite("./figures/gsea_testis.svg",
+        width = 15,
+        height = 10,
+        scaling = 2)
+
+gsea.testis
+
+dev.off()
 
