@@ -68,13 +68,14 @@ rlv.genes.brain <- c("grik2", "slc17a7", "grm4", "grm5", "grin1", "grm5", "grm1"
                      "kiss2", "prkag2", "prkar1b", #GnRH signaling
                      "hsd17b12") #steroidogenesis
 
-one <- c("grik2", "slc17a7", "grm4", "grm5", "grin1", "grm5", "grm1", "grm8", "grin2b") #glutamate signaling
-two <- c("gabbr1", "gabbr2", "gabrb3") #GABA signaling
-three <- c("dnmt3a", "hdac8", "mbd2") #methylation
+one <- c("dnmt3a", "hdac8", "mbd2") #methylation
+two <- c("kiss2", "prkag2", "prkar1b") #GnRH signaling
+three <- c("esrrg", "hsd17b12") #steroidogenesis
 four <- c("gh1", "irs2", "igfbp4", "igfbp5") #somatotropic
 five <- c("trhr3", "trhde", "dio1", "\\btg\\b") #thyrotropic
-six <- c("kiss2", "prkag2", "prkar1b") #GnRH signaling
-seven <- c("esrrg", "hsd17b12") #steroidogenesis
+six <- c("gabbr1", "gabbr2", "gabrb3") #GABA signaling
+seven <- c("grik2", "slc17a7", "grm4", "grm5", "grin1", "grm5", "grm1", "grm8", "grin2b") #glutamate signaling
+
 
 
 hyper_color_rlv <- "#660000"
@@ -191,8 +192,8 @@ circos.brain()
 dev.off()
 
 svglite("./figures/circos_brain.svg",
-        width = 15,
-        height = 15,
+        width = 18,
+        height = 18,
         scaling = 2.2)
 
 circos.brain()

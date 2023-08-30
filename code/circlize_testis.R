@@ -65,10 +65,11 @@ rlv.genes.testis <- c("ep300", "elp3", "kat5", "kat14", #histone acetyltransfera
                       "dnmt3a"
 )
 
-one <- c("ep300", "elp3", "kat5", "kat14") #histone acetyltransferase
-two <- c("lhcgr", "hsd17b12", "esrrg") 
-three <- c("piwil1", "mael", "spo11", "\\bddx4\\b") #spermatogenesis, gonadal development
-four <- c("dnmt3a") #methylation
+one <- c("dnmt3a", "ep300", "elp3", "kat5", "kat14") #methylation, epigenetic mechanisms
+two <- c("lhcgr") #GnRH signalling
+three <- c("hsd17b12", "esrrg", "lhcgr")  #steroidogenesis
+eight <- c("piwil1", "mael", "spo11", "\\bddx4\\b") #spermatogenesis, gonadal development
+nine <- c("ep300", "elp3", "kat5", "kat14") #histone acetyltransferase
 
 
 hyper_color_rlv <- "#660000"
@@ -95,12 +96,12 @@ annot <- t.testis %>%
   mutate(external_gene_name = ifelse(str_detect(external_gene_name, paste(three, collapse = "|")),
                                      str_replace_all(external_gene_name, 
                                                      paste(three, collapse = "|"), 
-                                                     "³\\0"),
+                                                     "⁸\\0"),
                                      external_gene_name)) %>%
-  mutate(external_gene_name = ifelse(str_detect(external_gene_name, paste(four, collapse = "|")),
+  mutate(external_gene_name = ifelse(str_detect(external_gene_name, paste(eight, collapse = "|")),
                                      str_replace_all(external_gene_name, 
-                                                     paste(four, collapse = "|"), 
-                                                     "⁴\\0"),
+                                                     paste(eight, collapse = "|"), 
+                                                     "⁸\\0"),
                                      external_gene_name))
 
 pointcolor <- annot %>% dplyr::select(pointcolor, loc)
@@ -170,8 +171,8 @@ circos.testis()
 dev.off()
 
 svglite("./figures/circos_testis.svg",
-        width = 15,
-        height = 15,
+        width = 18,
+        height = 18,
         scaling = 2.2)
 
 circos.testis()
