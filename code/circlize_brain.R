@@ -1,9 +1,13 @@
 library(circlize)
 library(tidyverse)
 library(svglite)
+library(methylKit)
   
 brain.meth.dir <- c("./data/myDiff.brain.RData")
 load(brain.meth.dir)
+
+qvalue.cut <- 0.05
+meth.cut <- 10
 
 myDiff10p.brain <- getMethylDiff(myDiff.brain,
                                    difference=meth.cut,
@@ -64,18 +68,61 @@ rlv.genes.brain <- c("grik2", "slc17a7", "grm4", "grm5", "grin1", "grm5", "grm1"
                      "kiss2", "prkag2", "prkar1b", #GnRH signaling
                      "hsd17b12") #steroidogenesis
 
+one <- c("grik2", "slc17a7", "grm4", "grm5", "grin1", "grm5", "grm1", "grm8", "grin2b") #glutamate signaling
+two <- c("gabbr1", "gabbr2", "gabrb3") #GABA signaling
+three <- c("dnmt3a", "hdac8", "mbd2") #methylation
+four <- c("gh1", "irs2", "igfbp4", "igfbp5") #somatotropic
+five <- c("trhr3", "trhde", "dio1", "\\btg\\b") #thyrotropic
+six <- c("kiss2", "prkag2", "prkar1b") #GnRH signaling
+seven <- c("esrrg", "hsd17b12") #steroidogenesis
+
+
 hyper_color_rlv <- "#660000"
 hypo_color_rlv <- "#000166"
 
-annot <- t.brain %>% 
+annot <- t.brain %>%
   filter(str_detect(external_gene_name, paste(rlv.genes.brain, collapse = "|"))) %>%
   tidyr::unite("loc", c("seqnames", "start", "end"), remove = FALSE) %>%
   dplyr::select(seqnames, start, end, mcols.meth.diff, external_gene_name, loc) %>%
   mutate(pointcolor = case_when(
     mcols.meth.diff >= 10 ~ hyper_color_rlv,
     mcols.meth.diff <= -10 ~ hypo_color_rlv
-  )
-  )
+  )) %>%
+  mutate(external_gene_name = ifelse(str_detect(external_gene_name, paste(one, collapse = "|")),
+                                     str_replace_all(external_gene_name, 
+                                                     paste(one, collapse = "|"), 
+                                                     "¹\\0"),
+                                     external_gene_name)) %>%
+  mutate(external_gene_name = ifelse(str_detect(external_gene_name, paste(two, collapse = "|")),
+                                     str_replace_all(external_gene_name, 
+                                                     paste(two, collapse = "|"), 
+                                                     "²\\0"),
+                                     external_gene_name)) %>%
+  mutate(external_gene_name = ifelse(str_detect(external_gene_name, paste(three, collapse = "|")),
+                                     str_replace_all(external_gene_name, 
+                                                     paste(three, collapse = "|"), 
+                                                     "³\\0"),
+                                     external_gene_name)) %>%
+  mutate(external_gene_name = ifelse(str_detect(external_gene_name, paste(four, collapse = "|")),
+                                     str_replace_all(external_gene_name, 
+                                                     paste(four, collapse = "|"), 
+                                                     "⁴\\0"),
+                                     external_gene_name)) %>%
+  mutate(external_gene_name = ifelse(str_detect(external_gene_name, paste(five, collapse = "|")),
+                                     str_replace_all(external_gene_name, 
+                                                     paste(five, collapse = "|"), 
+                                                     "⁵\\0"),
+                                     external_gene_name)) %>%
+  mutate(external_gene_name = ifelse(str_detect(external_gene_name, paste(six, collapse = "|")),
+                                     str_replace_all(external_gene_name, 
+                                                     paste(six, collapse = "|"), 
+                                                     "⁶\\0"),
+                                     external_gene_name)) %>%
+  mutate(external_gene_name = ifelse(str_detect(external_gene_name, paste(seven, collapse = "|")),
+                                     str_replace_all(external_gene_name, 
+                                                     paste(seven, collapse = "|"), 
+                                                     "⁷\\0"),
+                                     external_gene_name))
 
 pointcolor <- annot %>% dplyr::select(pointcolor, loc)
 
