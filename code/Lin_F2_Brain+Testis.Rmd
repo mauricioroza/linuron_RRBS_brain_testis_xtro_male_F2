@@ -838,7 +838,6 @@ genomation::plotTargetAnnotation(myDiff10p.anot.testis, main = "Testis Different
 mart <- biomaRt::useDataset(dataset = "xtropicalis_gene_ensembl",         
                             mart    = useMart("ENSEMBL_MART_ENSEMBL",       
                                               host    = "https://www.ensembl.org"))   
-
 #Download annotations from ensembl biomaRt
 xen.biomart <- biomaRt::getBM(attributes = 
                                 c("ensembl_gene_id","external_gene_name","chromosome_name", 
@@ -873,6 +872,10 @@ write.table(xen.biomart, "../annotations/xen.biomart.txt", row.names = FALSE, co
 
 ```{r}
 xen.biomart <- read.table("../annotations/xen.biomart.txt", header = TRUE)
+martfile <- c("../data/mart_xtropicalis_gene_ensembl.RData")
+
+load(martfile)
+
 
 # Table overlapping CpG regions with associated genes
 

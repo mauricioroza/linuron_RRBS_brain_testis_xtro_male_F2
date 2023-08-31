@@ -242,17 +242,3 @@ dev.off()
 # dev.off()
 # 
 # 
-
-#############
-
-gsea.brain <- readRDS("data/go.or.brain.rds")
-
-svglite("./figures/gsea_brain.svg",
-        width = 15,
-        height = 10,
-        scaling = 2)
-
-gsea.brain
-
-dev.off()
-
