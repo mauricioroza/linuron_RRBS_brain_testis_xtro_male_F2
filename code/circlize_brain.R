@@ -173,8 +173,8 @@ circos.genomicTrack(DMR_all2[,1:4],
                                    labels.cex = 0.3
                       )
                     })  
-circos.genomicLabels(annot, labels.column = 5, cex = 0.8, col= annot$pointcolor, line_lwd = 1, line_col="grey10", 
-                                           side="inside", connection_height=0.05, labels_height=0.04)
+circos.genomicLabels(annot, labels.column = 5, cex = 1, col= annot$pointcolor, line_lwd = 1, line_col="grey10", 
+                                           side="inside", connection_height=0.025, labels_height=0.05, padding = 0.8)
 
 }
 tiff("./figures/circos_brain.tiff", 
@@ -192,9 +192,9 @@ circos.brain()
 dev.off()
 
 svglite("./figures/circos_brain.svg",
-        width = 18,
-        height = 18,
-        scaling = 2.2)
+        width = 16,
+        height = 16,
+        scaling = 2)
 
 circos.brain()
 
