@@ -19,33 +19,6 @@ output:
     fig_width: 9            # default is 7
 ---
 
-# Abstract
-
-The herbicide linuron can cause endocrine disrupting effects in Xenopus tropicalis frogs, including offspring that were never exposed to the contaminant. The mechanisms by which these effects are transmitted across generations need to be further investigated. Here, we examined transgenerational alterations of brain and testis DNA methylation profiles paternally inherited from grandfathers developmentally exposed to an environmentally relevant concentration of linuron. Reduced representation bisulfite sequencing (RRBS) revealed numerous differentially methylated regions (DMRs) in brain (3060 DMRs) and testis (2551 DMRs) of the adult male F2 generation. DMRs were identified in genes important for DNA methylation (brain: dnmt3a; testis: dnmt3a and mbd2) and histone acetylation (brain: hdac8; testis: ep300, elp3, kat5 and kat14). Brain DMRs were found in genes involved in somatotropic (gh1, irs2, igfbp4, igfbp5), thyrotropic (trhr3, trhde, dio1, tg) and GnRH signalling (kiss2, prkag2, prkar1b). Testis DMRs were found in genes essential for spermatogenesis, meiosis and germ cell development (piwil1, mael, spo11, ddx4). Gene enrichment analysis showed pathways related with synaptic plasticity in the brain and epigenetic regulation in the testis. These findings are in accordance with the observed phenotypical alterations and suggest that developmental exposure to linuron can cause transgenerational alterations in DNA methylation patterns that affect growth, metabolism, reproductive function and epigenetic regulation in amphibians. This study provides new insights about the potential mechanisms of transgenerational effects of pollution in amphibians.
-
-## Methods
-
-The experiments were conducted at the Evolutionary Biology Center, Uppsala University, with Xenopus tropicalis frogs originated from Xenopus One (Dexter, MI, USA). This study is a continuation of (Orton et al., 2018) and (Karlsson et al., 2021). Briefly, in the F0 generation, free-swimming tadpoles (NF stage 40, (Faber and Nieuwkoop, 1994)) were exposed to 45 μg/L of linuron (99.9% purity; CAS 330–55-2, Sigma-Aldrich, St. Louis, MO, USA) dissolved in 0.0008% acetone or to acetone only (Control group) until they reached metamorphosis (NF 66). The exposure was conducted with three tanks per treatment, using a semi-static system where half of the water was changed three times per week, photoperiod 12:12h and 26°C. Linuron concentrations were analysed using gas chromatography/mass spectroscopy (GCMS) throughout the experiment and water quality was verified every other week (Orton et al., 2018).
-After the exposure period, the animals were transferred to clean water and when they reached sexual maturity, exposed males were mated with naïve females to obtain the F1 generation and follow the male-transmitted effects of linuron. At 20 months of age, F1 males were mated with naïve females to obtain F2 generation, allowing the study of transgenerational effects (Karlsson et al., 2021). 
-The experiments were approved by the Uppsala Animal Ethical Committee and in accordance with the Swedish Legislation on Animal Experimentation (Animal Welfare Act SFS1998:56) and the European Union Directive on the Protection of Animals Used for Scientific Purposes (2010/63/EU).
-
-Dissection
-
-The frogs were anaesthetized in buffered tricaine (tricainemethane sulfonate 0.3%, pH 7; Sigma-Aldrich, St. Louis, MO, USA) and euthanised by decapitation. Brain and the right testis were collected and stored at -80 °C until analysis.
-
-DNA extraction, library preparation and sequencing
-
-Genomic DNA from brain and testis samples from 7 control and 9 treatment individuals in the F2 generation were extracted using a Qiagen Allprep DNA/RNA mini kit (Qiagen, Germany) according to the manufacturer’s protocol with an additional wash with AW2 buffer. DNA quality was evaluated using NanoDrop ND-1000 spectrometer (Thermo Fisher Scientific, United States) and agarose gel electrophoresis (Bio-Rad Laboratories, US). DNA concentration was measured using Qubit 4 fluorometer with double-stranded DNA (dsDNA) Broad Range (BR) Assay (Thermo Fisher Scientific, United States). One testis control sample with low concentration and low 230/260nm absorbance ratio value was excluded from sequencing.
- Library preparation and RRBS was performed by the Bioinformatics and Expression Analysis core facility (BEA, Karolinska Institute, Sweden) using Diagenode Premium RRBS kit (Diagenode, Belgium) and sequenced on the Illumina Nextseq 2000 platform (Illumina, United States). Average sequencing read size was 44.18 ± 16.10 (mean ± s.d.) millions of single-end reads. The data for this study have been deposited in the European Nucleotide Archive (ENA) at EMBL-EBI under accession number PRJEB59360 (https://www.ebi.ac.uk/ena/browser/view/PRJEB59360).
-
-Bioinformatics analysis
-
-Sequencing data were processed using the Nextflow nf-core methylseq pipeline version 1.6.1 (Ewels et al., 2021, 2020). The reads were aligned to the X. tropicalis reference genome (UCB v. 10.0) using Bismark v. 0.23.0, with an average of 41.7% ± 4.5% reads uniquely aligned. Sequencing quality was verified by visualizing FastQC v0.11.9 reports. 
-
-## Hypothesis
-
-Increased methylation levels on CpG islands on promoter regions are generally associated with repression of RNA expression. We hypothesise that differential methylatation will be found on regions related to genes associated with metabolic pathways and gonadal germ cell development.
-
 ```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
 # Main analysis package
 library(methylKit)
