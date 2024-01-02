@@ -1,7 +1,7 @@
 library(tidyverse)
 library(readxl)
 library(ChIPpeakAnno)
-
+library(methylKit)
 
 ######################################################################
 
@@ -83,7 +83,8 @@ PCA_phenotype <- function(meth.diff, perc.meth, rlv.genes, phenotype, plot_title
 }
 
 
-phenotype <- read_excel("data/phenotype_data.xlsx")
+phenotype <- read_excel("data/phenotype_data.xlsx") %>%
+  mutate(fertility_rate = fertilized_eggs/total_eggs)
 
 brain.unite <- readRDS("./data/brain_united.rds")
 
@@ -100,12 +101,46 @@ qvalue.cut <- 0.05
 
 growth_genes <- c(
   "gh1", "irs2", "igfbp4", "igfbp5", #somatotropic
-  "trhr3", "trhde", "dio1", "\\btg\\b" #thyrotropic 
+  "trhr3", "trhde", "dio1", "\\btg\\b", #thyrotropic 
+  "kiss2", "prkag2", "prkar1b", #GnRH signaling
+  "hsd17b12" #steroidogenesis
   )
 
 size.phen <- phenotype %>%
-  select(treatment, ID, body_weight,hindleg_length,glucose)
+  dplyr::select(treatment, ID, body_weight,hindleg_length,glucose)
 
 
 
-PCA_phenotype(myDiff.brain, pm.brain, growth_genes, size.phen, "PCA Growth Genes")
+PCA_phenotype(myDiff.brain, pm.brain, growth_genes, size.phen, "PCA Growth Genes Brain")
+
+reproduction_genes <- c("kiss2", "prkag2", "prkar1b", #GnRH signaling
+                        "hsd17b12") #steroidogenesis
+
+rep_phen <- phenotype %>%
+  dplyr::select(treatment, ID,glucose, germ_cells_nests)
+
+PCA_phenotype(myDiff.brain, pm.brain, reproduction_genes, rep_phen, "PCA Reproduction Genes Brain")
+
+###########################################################
+#Testis genes
+
+testis.unite <- readRDS("./data/testis_unite.rds")
+
+pm.testis <- percMethylation(testis.unite) %>% 
+  data.frame
+colnames(pm.testis) <- str_replace(colnames(pm.testis), "testis_", "")
+
+testis.meth.dir <- c("./data/myDiff.testis.RData")
+load(testis.meth.dir)
+
+testis_genes <- c("lhcgr", "hsd17b12", "esrrg",
+                  "piwil1", "mael", "spo11", "\\bddx4\\b" #spermatogenesis, gonadal development
+)
+
+testis_phen <- phenotype %>%
+  dplyr::select(treatment, ID, germ_cells_nests, fertility_rate)
+
+PCA_phenotype(myDiff.testis, pm.testis, testis_genes, testis_phen, "PCA Reproduction Genes Testis")
+
+
+
