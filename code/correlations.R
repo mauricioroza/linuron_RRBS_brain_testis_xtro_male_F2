@@ -119,7 +119,9 @@ corr_phenotype <- function(meth.diff, perc.meth, rlv.genes, phenotype) {
       by = c("feature" = "ensembl_gene_id"))
   
   rlv.genes.table <- t.pca %>%
-    filter(str_detect(external_gene_name, paste(rlv.genes, collapse = "|")))
+    filter(str_detect(external_gene_name, paste(rlv.genes, collapse = "|"))) %>%
+    arrange(start)%>%
+    arrange(factor(external_gene_name, levels = rlv.genes))
   
   t.rlv.genes.table <- rlv.genes.table %>% t %>% data.frame
   
@@ -138,18 +140,43 @@ corr_phenotype <- function(meth.diff, perc.meth, rlv.genes, phenotype) {
   variables.pca
 }
 
-brain_genes <- c("grik2", "slc17a7", "grm4", "grm5", "grin1", "grm5", "grm1", "grm8", "grin2b", #glutamate signaling
+brain_genes <- c("grik2", "slc17a7", "grm4", "grm5", "grin1", "grm1", "grm8", "grin2b", #glutamate signaling
                                     "gabbr1", "gabbr2", "gabrb3", #GABA signaling
-                                    "dnmt3a", "hdac8", "mbd2", #methylation
                                     "gh1", "irs2", "igfbp4", "igfbp5", #somatotropic
                                     "trhr3", "trhde", "dio1", "\\btg\\b", #thyrotropic 
-                                    "esrrg",
                                     "kiss2", "prkag2", "prkar1b", #GnRH signaling
-                                    "hsd17b12") #steroidogenesis
+                                    "hsd17b12", "esrrg", #steroidogenesis
+                                    "dnmt3a", "hdac8", "mbd2" #methylation
+                 )
 
-df_brain <- corr_phenotype(myDiff.brain, pm.brain, brain_genes, phenotype)
+phen <- phenotype %>%
+  dplyr::select(treatment, ID, body_weight, svl_length, hindleg_length, germ_cells_nests, fertility_rate)
+
+df_brain <- corr_phenotype(myDiff.brain, pm.brain, brain_genes, phen)
 
 
 corr_brain <- correlation_matrix(df_brain, type = "spearman", digits = 2)
 
-corr_brain <- corr_brain[-c(1:16), -c(17:ncol(corr_brain))]
+corr_brain <- corr_brain[-c(1:(ncol(phen)-2)), -c((ncol(phen)-1):ncol(corr_brain))] %>% data.frame %>%
+  rownames_to_column(var = "Gene")
+
+
+#######
+# Testis
+
+testis_genes <- c("piwil1", "mael", "spo11", "\\bddx4\\b", #spermatogenesis, gonadal development
+                  "dnmt3a", "ep300", "elp3", "kat5", "kat14", #histone acetyltransferase, methylation
+                  "hsd17b12", "esrrg", "lhcgr")
+
+df_testis <- corr_phenotype(myDiff.testis, pm.testis, testis_genes, phen)
+
+corr_testis <- correlation_matrix(df_testis, type = "spearman", digits = 2)
+
+corr_testis <- corr_testis[-c(1:(ncol(phen)-2)), -c((ncol(phen)-1):ncol(corr_testis))] %>% data.frame %>%
+  rownames_to_column(var = "Gene")
+
+corr_dfs <- list("Brain" = corr_brain, "Testis" = corr_testis)
+
+library(writexl)
+write_xlsx(corr_dfs, path = "./supplementary_material_tables/correlations.xlsx")
+

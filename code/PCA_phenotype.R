@@ -121,7 +121,8 @@ rep_phen <- phenotype %>%
 
 PCA_phenotype(myDiff.brain, pm.brain, reproduction_genes, rep_phen, "PCA Reproduction Genes Brain")
 
-###########################################################
+
+############### 
 #Testis genes
 
 testis.unite <- readRDS("./data/testis_unite.rds")

@@ -1143,15 +1143,17 @@ rlv.genes.table.brain <- rlv.genes.table.brain %>%
   bind_cols(DMR_location = feature.brain[,4])
 
 rlv.genes.table.brain.final <- rlv.genes.table.brain %>%
-  dplyr::select(c(gene = "external_gene_name",
+  dplyr::select(c(
+                chromosome = "seqnames",
+                "start", "end",
+                gene = "external_gene_name",
                 "DMR_location",
                 methylation_difference = "mcols.meth.diff",
                 q.value = "mcols.qvalue",
-                chromosome = "seqnames",
-                "start", "end",
                 strand = "feature_strand",
                 "description"
                 )) %>%
+  arrange(start)%>%
       arrange(factor(gene, levels = c(
         "grik2", "slc17a7", "grm4", "grm5", "grin1", "grm1", "grm8", "grin2b", #glutamate signaling
                      "gabbr1", "gabbr2", "gabrb3", #GABA signaling
@@ -1195,14 +1197,15 @@ rlv.genes.table.testis <- rlv.genes.table.testis %>%
 
 rlv.genes.table.testis.final <- rlv.genes.table.testis %>%
   dplyr::select(c(gene = "external_gene_name",
+                chromosome = "seqnames",
+                "start", "end",
                 "DMR_location",
                 methylation_difference = "mcols.meth.diff",
                 q.value = "mcols.qvalue",
-                chromosome = "seqnames",
-                "start", "end",
                 strand = "feature_strand",
                 "description"
                 )) %>%
+    arrange(start)%>%
       arrange(factor(gene, levels = c(
                       "piwil1", "mael", "spo11", "ddx4", #spermatogenesis, gonadal development
                       "dnmt3a", "ep300", "elp3", "kat5", "kat14", #histone acetyltransferase, methylation
@@ -1214,6 +1217,9 @@ rlv.genes.table.testis.final$description <- str_replace(rlv.genes.table.testis.f
 
 clipr::write_clip(rlv.genes.table.brain.final)
 clipr::write_clip(rlv.genes.table.testis.final)
+
+rlv.table <- list("Brain" = rlv.genes.table.brain.final, "Testis" = rlv.genes.table.testis.final)
+write_xlsx(rlv.table, path = "../supplementary_material_tables/selected_genes.xlsx")
 
 ```
 
