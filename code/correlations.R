@@ -1,3 +1,7 @@
+library(tidyverse)
+library(readxl)
+library(methylKit)
+library(ChIPpeakAnno)
 
 #' correlation_matrix
 #' Creates a publication-ready / formatted correlation matrix, using `Hmisc::rcorr` in the backend.
@@ -18,7 +22,7 @@
 #' `correlation_matrix(iris)`
 #' `correlation_matrix(mtcars)`
 correlation_matrix <- function(df, 
-                               type = "pearson",
+                               type = "spearman",
                                digits = 3, 
                                decimal.mark = ".",
                                use = "all", 
@@ -49,12 +53,17 @@ correlation_matrix <- function(df,
   x <- as.matrix(df)
   
   # run correlation analysis using Hmisc package
-  correlation_matrix <- Hmisc::rcorr(x, type = )
+  correlation_matrix <- Hmisc::rcorr(x, type = type)
   R <- correlation_matrix$r # Matrix of correlation coeficients
   p <- correlation_matrix$P # Matrix of p-value 
   
   # transform correlations to specific character format
   Rformatted = formatC(R, format = 'f', digits = digits, decimal.mark = decimal.mark)
+  
+  # if there are any negative numbers, we want to put a space before the positives to align all
+  if (sum(!is.na(R) & R < 0) > 0) {
+    Rformatted = ifelse(R > 0, paste0(' ', Rformatted), Rformatted)
+    }
 
   # add significance levels if desired
   if (show_significance) {
@@ -140,6 +149,26 @@ corr_phenotype <- function(meth.diff, perc.meth, rlv.genes, phenotype) {
   variables.pca
 }
 
+####################
+#Brain
+phenotype <- read_excel("data/phenotype_data.xlsx") %>%
+  mutate(fertility_rate = fertilized_eggs/total_eggs,
+         BMI = (body_weight*1000)/((svl_length*1000)^2),
+         hll_svl = hindleg_length/svl_length)
+
+brain.unite <- readRDS("./data/brain_united.rds")
+
+pm.brain <- percMethylation(brain.unite) %>% 
+  data.frame
+colnames(pm.brain) <- str_replace(colnames(pm.brain), "Brain_", "")
+
+brain.meth.dir <- c("./data/myDiff.brain.RData")
+load(brain.meth.dir)
+
+meth.cut <- 10
+qvalue.cut <- 0.05
+
+
 brain_genes <- c("grik2", "slc17a7", "grm4", "grm5", "grin1", "grm1", "grm8", "grin2b", #glutamate signaling
                                     "gabbr1", "gabbr2", "gabrb3", #GABA signaling
                                     "gh1", "irs2", "igfbp4", "igfbp5", #somatotropic
@@ -150,7 +179,7 @@ brain_genes <- c("grik2", "slc17a7", "grm4", "grm5", "grin1", "grm1", "grm8", "g
                  )
 
 phen <- phenotype %>%
-  dplyr::select(treatment, ID, body_weight, svl_length, hindleg_length, germ_cells_nests, fertility_rate)
+  dplyr::select(treatment, ID, body_weight, svl_length, BMI, hindleg_length, hll_svl, germ_cells_nests, glucose)
 
 df_brain <- corr_phenotype(myDiff.brain, pm.brain, brain_genes, phen)
 
@@ -164,7 +193,16 @@ corr_brain <- corr_brain[-c(1:(ncol(phen)-2)), -c((ncol(phen)-1):ncol(corr_brain
 #######
 # Testis
 
-testis_genes <- c("piwil1", "mael", "spo11", "\\bddx4\\b", #spermatogenesis, gonadal development
+testis.unite <- readRDS("./data/testis_unite.rds")
+
+pm.testis <- percMethylation(testis.unite) %>% 
+  data.frame
+colnames(pm.testis) <- str_replace(colnames(pm.testis), "testis_", "")
+
+testis.meth.dir <- c("./data/myDiff.testis.RData")
+load(testis.meth.dir)
+
+testis_genes <- c("piwil1", "mael", "spo11", "\\bddx4\\b","tdrd9", "brip1","top2a", "iftap", "PGRMC2", "syt6", "mre11", #spermatogenesis, gonadal development
                   "dnmt3a", "ep300", "elp3", "kat5", "kat14", #histone acetyltransferase, methylation
                   "hsd17b12", "esrrg", "lhcgr")
 

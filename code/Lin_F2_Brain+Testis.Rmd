@@ -1170,11 +1170,10 @@ rlv.genes.table.brain.final$description <- str_replace(rlv.genes.table.brain.fin
 ##################################
 
 
-rlv.genes.testis <- c("ep300", "elp3", "kat5", "kat14", #histone acetyltransferase
-                      "lhcgr", "hsd17b12", "esrrg",
-                      "piwil1", "mael", "spo11", "\\bddx4\\b", #spermatogenesis, gonadal development
-                      "dnmt3a"
-)
+rlv.genes.testis <- c(
+        "piwil1", "mael", "spo11", "\\bddx4\\b","tdrd9", "brip1","top2a", "iftap", "PGRMC2", "syt6", "mre11", #spermatogenesis, gonadal development
+                  "dnmt3a", "ep300", "elp3", "kat5", "kat14", #histone acetyltransferase, methylation
+                  "hsd17b12", "esrrg", "lhcgr")
 
 rlv.genes.table.testis <- t.testis %>%
    filter(str_detect(external_gene_name, paste(rlv.genes.testis, collapse = "|")))
@@ -1207,16 +1206,16 @@ rlv.genes.table.testis.final <- rlv.genes.table.testis %>%
                 )) %>%
     arrange(start)%>%
       arrange(factor(gene, levels = c(
-                      "piwil1", "mael", "spo11", "ddx4", #spermatogenesis, gonadal development
-                      "dnmt3a", "ep300", "elp3", "kat5", "kat14", #histone acetyltransferase, methylation
-                      "hsd17b12", "esrrg")))
+        "piwil1", "mael", "spo11", "ddx4","tdrd9", "brip1","top2a", "iftap", "PGRMC2", "syt6", "mre11", #spermatogenesis, gonadal development
+                  "dnmt3a", "ep300", "elp3", "kat5", "kat14", #histone acetyltransferase, methylation
+                  "hsd17b12", "esrrg", "lhcgr")))
 
 rlv.genes.table.testis.final$description <- str_replace(rlv.genes.table.testis.final$description , " \\s*\\[[^\\)]+\\]", "")
 
 
 
-clipr::write_clip(rlv.genes.table.brain.final)
-clipr::write_clip(rlv.genes.table.testis.final)
+# clipr::write_clip(rlv.genes.table.brain.final)
+# clipr::write_clip(rlv.genes.table.testis.final)
 
 rlv.table <- list("Brain" = rlv.genes.table.brain.final, "Testis" = rlv.genes.table.testis.final)
 write_xlsx(rlv.table, path = "../supplementary_material_tables/selected_genes.xlsx")
