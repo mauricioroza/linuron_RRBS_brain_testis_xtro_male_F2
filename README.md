@@ -11,6 +11,7 @@ The command used to launch the workflow was as follows:
 ```bash
 nextflow run nf-core/methylseq -r 1.6.1 \
   --input '/linuron_f2/*.fastq.gz' \
+  --profile uppmax
   --aligner bismark \
   --rrbs \
   --fasta GCF_000004195.4_UCB_Xtro_10.0_genomic.fasta \
