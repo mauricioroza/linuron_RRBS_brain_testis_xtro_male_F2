@@ -1,6 +1,6 @@
 # Male-transmitted transgenerational effects of the herbicide linuron on DNA methylation profiles in Xenopus tropicalis brain and testis
 
-This repository contains the R code used in the analysis of RRBS data in the publication entitled [Male-transmitted transgenerational effects of the herbicide linuron on DNA methylation profiles in Xenopus tropicalis brain and testis](https://doi.org/10.1016/j.scitotenv.2024.170949)
+This repository contains the R code used in the analysis of RRBS data in the <a href="https://doi.org/10.1016/j.scitotenv.2024.170949" target="_blank">publication</a>
 
 Raw RRBS fastq files have been deposited in the European Nucleotide Archive (ENA) at EMBL-EBI under accession number [PRJEB59360](https://www.ebi.ac.uk/ena/browser/view/PRJEB59360)
 
